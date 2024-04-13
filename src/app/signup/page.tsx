@@ -126,10 +126,10 @@ const Register = () => {
                   {btnLoading ? (
                     <>
                       <AiOutlineReload className="mr-2 h-4 w-4 animate-spin" />
-                      "Please wait"{" "}
+                      Please wait
                     </>
                   ) : (
-                    "Register"
+                    <>Register</>
                   )}
                 </Button>
                 <Button variant="outline" className="w-full">

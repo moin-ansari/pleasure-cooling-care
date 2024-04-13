@@ -113,10 +113,10 @@ const Login = () => {
                   {btnLoading ? (
                     <>
                       <AiOutlineReload className="mr-2 h-4 w-4 animate-spin" />
-                      "Please wait"{" "}
+                      Please wait
                     </>
                   ) : (
-                    "Login"
+                    <>Login</>
                   )}
                 </Button>
                 <Button variant="outline" className="w-full">
