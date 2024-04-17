@@ -21,14 +21,14 @@ interface LandingPageProps {
 }
 
 interface Experience {
-  logo: String;
-  company: String;
-  years: String;
-  work: Object;
-  image: String;
+  logo: string;
+  company: string;
+  years: string;
+  work: object;
+  image: string;
 }
 
-const Home: React.FC<LandingPageProps> = () => {
+const Home = () => {
   // State for form fields
   const [formData, setFormData] = useState({
     name: "",
@@ -40,7 +40,7 @@ const Home: React.FC<LandingPageProps> = () => {
   });
 
   const technician: Technician = {
-    name: "Moin",
+    name: "Hi, I'm Moin",
     image: "/moin.png",
     summery: `An highly skilled AC Technician with over 5 years of experience in the
     installation, repair, and maintenance of AC systems. I will troubleshoot and diagnosis of AC problems, responding to emergency repair requests.`,
@@ -101,7 +101,7 @@ const Home: React.FC<LandingPageProps> = () => {
     <div>
       <div className="flex justify-between p-3">
         <div className="w-3/5">
-          <h1 className="text-2xl font-bold mb-2">Hi, I'm {technician.name}</h1>
+          <h1 className="text-2xl font-bold mb-2">{technician.name}</h1>
           <div className="text-primary text-[13px] text-justify pr-2 font-medium">
             {technician.summery}
           </div>
