@@ -2,7 +2,8 @@
 
 export const publicRoute = [
     "/login",
-    "/signup"
+    "/signup",
+    "/booknow"
 ]
 
 export const protectedRoute = [

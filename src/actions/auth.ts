@@ -27,3 +27,7 @@ export const RegisterAction = (values: z.infer<typeof RegisterSchema>) => {
 
     return true
 };
+
+export const GetUser = () => {
+    return "user";
+}

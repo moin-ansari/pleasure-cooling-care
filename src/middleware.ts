@@ -12,6 +12,10 @@ export function middleware(request: NextRequest) {
 
     const token = request.cookies.get("token")?.value;
 
+    if( path && path === "/"){
+        return NextResponse.redirect(new URL( "/home" , request.url))
+    }
+
     if( path && protectedRoute.includes(path) && !token){
         return NextResponse.redirect(new URL( "/login" , request.url))
     }
@@ -26,10 +30,11 @@ export function middleware(request: NextRequest) {
 // See "Matching Paths" below to learn more
 export const config = {
     matcher: [
+        "/",
       "/login",
       "/signup",
-      "/cart",
       "/home",
-      "/products"
+      "/services",
+      "/booknow"
     ],
   }
