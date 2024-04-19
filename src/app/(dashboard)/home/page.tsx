@@ -6,6 +6,8 @@ import Experiences from "./../../../components/custom/experiences";
 import Services from "@/components/custom/services";
 import Footer from "@/components/custom/footer";
 import BookingForm from "@/components/custom/bookingForm";
+import Link from "next/link";
+import Contact from "@/components/custom/contact";
 
 // Define interface for AC technician
 interface Technician {
@@ -117,14 +119,17 @@ const Home = () => {
         </div>
       </div>
       <div className="flex p-3 justify-between">
-        <Button variant={"outline"}>Contact Me</Button>
-        <Button variant={"default"}>Book a Service Now</Button>
+        <Button variant={"outline"}><Link href="#contact">Contact Me</Link></Button>
+        <Button variant={"default"} asChild>
+          <Link href="#bookingForm">Book a Service Now</Link>
+        </Button>
       </div>
       {/* services */}
-      <Services services={technician.services} />
+      <Services id="services" services={technician.services} />
       {/* Experience */}
-      <Experiences experience={technician.experience} />
+      <Experiences id="experiences" experience={technician.experience} />
       <BookingForm />
+      <Contact/>
       <Footer />
     </div>
   );

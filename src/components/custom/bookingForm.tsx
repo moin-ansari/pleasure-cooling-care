@@ -60,7 +60,7 @@ export default function BookingForm() {
   }
 
   return (
-    <div className="p-3 text-white bg-primary">
+    <div id="bookingForm" className="p-3 text-white bg-primary">
       <div className="text-lg font-semibold">
         Fill out form to book service now
       </div>
