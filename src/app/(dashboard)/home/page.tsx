@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Experiences from "./../../../components/custom/experiences";
 import Services from "@/components/custom/services";
 import Footer from "@/components/custom/footer";
+import BookingForm from "@/components/custom/bookingForm";
 
 // Define interface for AC technician
 interface Technician {
@@ -59,7 +60,7 @@ const Home = () => {
       },
       {
         logo: "/logo",
-        company: "Voltage Service Center",
+        company: "Voltas Service Center",
         years: "2",
         work: {
           description:
@@ -123,6 +124,7 @@ const Home = () => {
       <Services services={technician.services} />
       {/* Experience */}
       <Experiences experience={technician.experience} />
+      <BookingForm />
       <Footer />
     </div>
   );

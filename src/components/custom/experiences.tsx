@@ -16,7 +16,7 @@ const Experiences = ({ experience }: any) => {
                 <div>{item.company}</div>
                 <div className="text-green-600">{item.years} Years</div>
               </div>
-              <div className="text-[13px]">
+              <div className="text-[10px]">
                 <div className="pb-[6px]">{item.work.description}</div>
                 <div className="font-semibold text-[10px]">
                   <div>Complaints : {item.work.complaints}+</div>
