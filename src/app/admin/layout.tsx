@@ -1,12 +1,12 @@
+import Header from "@/components/custom/admin/header";
 import type { Metadata } from "next";
-import UserHeader from "@/components/custom/userHeader";
 
 export const metadata: Metadata = {
-  title: "AC Expert",
-  description: "Ac Technician",
+  title: "Admin",
+  description: "Admin Dashboard",
 };
 
-export default function Dashboard({
+export default function Admin({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export default function Dashboard({
 
   return (
     <div>
-      <UserHeader />
+      <Header/>
       {children}
     </div>
   );

@@ -173,7 +173,7 @@ export default function BookingForm() {
           />
           <FormField
             control={form.control}
-            name="serviceType"
+            name="acType"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>AC Type</FormLabel>
@@ -187,10 +187,10 @@ export default function BookingForm() {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem className="text-primary" value="window ac">
+                    <SelectItem className="text-primary" value="window">
                       Window AC
                     </SelectItem>
-                    <SelectItem className="text-primary" value="split ac">
+                    <SelectItem className="text-primary" value="split">
                       Split AC
                     </SelectItem>
                   </SelectContent>

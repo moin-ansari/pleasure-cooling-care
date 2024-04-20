@@ -7,15 +7,22 @@ export async function POST(request: NextRequest) {
 
         connect();    
 
-        const req = await request.json();
+        let req = await request.json();
 
+        
         if(!req){
             return NextResponse.json({ status: 'error', message: "Please fill all the fields"})
         }
+        
+        req = { ...req, status: "pending"} 
 
-        const bookRequest = new BookRequest(req);
+        console.log(req)
 
-        return NextResponse.json({ status: 'success', message: "Booked Request Successfully", data: bookRequest})
+        const bookRequest = await new BookRequest(req);
+
+        const savedBookRequest = await bookRequest.save();
+
+        return NextResponse.json({ status: 'success', message: "Booked Request Successfully", data: savedBookRequest})
         
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})

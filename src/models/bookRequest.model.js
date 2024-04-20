@@ -34,6 +34,10 @@ const BookRequestSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Address is required'],
     minlength: [10, 'Address must be at least 10 characters']
+  },
+  status: {
+    type: String,
+    required: [true, 'Status is required']
   }
 });
 
