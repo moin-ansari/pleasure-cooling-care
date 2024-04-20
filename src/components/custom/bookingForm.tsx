@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
+import GoogleMap from "./googlemap";
+import toast from "react-hot-toast";
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -38,6 +40,9 @@ const formSchema = z.object({
   serviceType: z.string({
     required_error: "Please select a valid service.",
   }),
+  acType: z.string({
+    required_error: "Please select a AC Type.",
+  }),
   address: z.string().min(10, {
     message: "Please type a correct Address",
   }),
@@ -49,18 +54,46 @@ export default function BookingForm() {
     defaultValues: {
       name: "",
       mobile: "",
+      email: "",
+      serviceType: "",
+      acType: "",
+      address: ""
     },
   });
 
   // 2. Define a submit handler.
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
-    console.log(values);
+    let res = await fetch('/api/users/bookRequest', {
+      method: "POST",
+      body: JSON.stringify(values)
+    })
+    let data = await res.json();
+    if(data.status === "success"){
+      toast.success(data.message)
+      console.log(data)
+      form.reset()
+    }else if(data.status === "error"){
+      toast.error(data.message)
+    }
+
+  }
+
+  const getUserLocation = () => {
+    if('geolocation' in navigator) {
+      // Retrieve latitude & longitude coordinates from `navigator.geolocation` Web API
+      navigator.geolocation.getCurrentPosition(({ coords }) => {
+          const { latitude, longitude } = coords;
+          console.log(latitude, longitude)
+          // setLocation({ latitude, longitude });
+      })
+    }
   }
 
   return (
-    <div id="bookingForm" className="p-3 text-white bg-primary">
+    <div id="bookingForm" >
+    <div className="px-3 py-6 text-white bg-primary">
       <div className="text-lg font-semibold">
         Fill out form to book service now
       </div>
@@ -141,14 +174,42 @@ export default function BookingForm() {
           />
           <FormField
             control={form.control}
+            name="serviceType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>AC Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="text-primary">
+                      <SelectValue placeholder="Please select AC type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem className="text-primary" value="window ac">
+                      Window AC
+                    </SelectItem>
+                    <SelectItem className="text-primary" value="split ac">
+                      Split AC
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
             name="address"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Address: </FormLabel>
+                <FormLabel>Address (Google Map Location) </FormLabel>
                 <FormControl>
                   <Input
                     className="text-primary"
-                    placeholder="Your full address with pincode"
+                    placeholder="Please share google map location"
                     {...field}
                   />
                 </FormControl>
@@ -163,6 +224,8 @@ export default function BookingForm() {
           </div>
         </form>
       </Form>
+      {/* <Button onClick={getUserLocation}>Get Location</Button> */}
+    </div>
     </div>
   );
 }
