@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.4",
+    "@next/third-parties": "^14.2.2",
     "@radix-ui/react-checkbox": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
@@ -23,7 +24,7 @@
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.365.0",
     "mongoose": "^8.3.0",
-    "next": "14.1.4",
+    "next": "^14.2.2",
     "nodemailer": "^6.9.13",
     "react": "^18",
     "react-dom": "^18",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.6",
+    "@types/next": "^9.0.0",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.14",
     "@types/react": "^18",
