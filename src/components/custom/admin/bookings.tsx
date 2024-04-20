@@ -38,18 +38,14 @@ const Bookings = (query: any) => {
         if (jsonData.status !== "success") {
           toast.error("Could not get data");
         }
-
-        console.log(jsonData.data);
-
         setData([...jsonData.data]);
-        console.log(data);
+
       } catch (error: any) {
         toast.error("Error fetching data:", error);
       }
     };
 
     fetchData();
-    console.log(data);
   }, []);
 
   if (!data.length) {

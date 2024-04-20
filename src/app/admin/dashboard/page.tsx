@@ -35,7 +35,6 @@ const Dashboard = () => {
     if (jsonData.status !== "success") {
       toast.error("Error fetching data");
     }
-    console.log(jsonData.count)
     return jsonData.count;
   };
 

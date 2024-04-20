@@ -12,8 +12,6 @@ export async function POST(request: NextRequest) {
 
         const bookings: any = await BookRequest.find({status: query})
 
-        console.log(bookings)
-
         return NextResponse.json({ status: 'success', data: bookings})
         
     } catch (error: any) {

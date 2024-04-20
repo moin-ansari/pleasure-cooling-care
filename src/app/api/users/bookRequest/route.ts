@@ -16,8 +16,6 @@ export async function POST(request: NextRequest) {
         
         req = { ...req, status: "pending"} 
 
-        console.log(req)
-
         const bookRequest = await new BookRequest(req);
 
         const savedBookRequest = await bookRequest.save();
