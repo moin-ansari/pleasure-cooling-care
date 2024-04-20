@@ -31,7 +31,7 @@ const formSchema = z.object({
   }),
   mobile: z.string().min(10, {
     message: "Mobile Number must be at least 10 characters.",
-  }),
+  }).max(10),
   email: z
     .string({
       required_error: "Please type a valid email.",
