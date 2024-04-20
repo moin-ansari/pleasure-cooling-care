@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import Link from "next/link";
-import GoogleMap from "./googlemap";
 import toast from "react-hot-toast";
 
 const formSchema = z.object({
