@@ -20,14 +20,14 @@ import {
 } from "@/components/ui/table";
 import { AiOutlineReload } from "react-icons/ai";
 
-const Bookings = (query: any) => {
+const Bookings = ({params}: any) => {
   const [data, setData] = useState<any>([]);
-
+  
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch(
-          `/api/users/getBookings?bookings=${query.query}`,
+          `/api/users/getBookings?bookings=${params}`,
           {
             method: "POST",
           }
@@ -75,8 +75,8 @@ const Bookings = (query: any) => {
           </TableHeader>
           <TableBody>
             {data &&
-              data.map((elem: any) => (
-                <TableRow className="bg-accent p-2">
+              data.map((elem: any, index: any) => (
+                <TableRow className="bg-accent p-2" key={index}>
                   <TableCell className="p-2">
                     <div className="font-medium">{elem.name}</div>
                     <div className="hidden text-sm text-muted-foreground md:inline">

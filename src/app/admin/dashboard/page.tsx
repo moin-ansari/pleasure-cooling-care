@@ -62,13 +62,13 @@ const Dashboard = () => {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="Bookings">
-          <Bookings query="pending" />
+          <Bookings params="pending" />
         </TabsContent>
         <TabsContent value="Completed">
-          <Bookings query="completed" />
+          <Bookings params="completed" />
         </TabsContent>
         <TabsContent value="Cancelled">
-          <Bookings query="cancelled" />
+          <Bookings params="cancelled" />
         </TabsContent>
       </Tabs>
     </div>
