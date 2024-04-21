@@ -19,9 +19,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AiOutlineReload } from "react-icons/ai";
+import { useRouter } from 'next/navigation';
 
 const Bookings = ({params}: any) => {
   const [data, setData] = useState<any>([]);
+  const router = useRouter()
   
   useEffect(() => {
     const fetchData = async () => {
@@ -56,6 +58,10 @@ const Bookings = ({params}: any) => {
     );
   }
 
+  const handleRowClick = (id: any) => {
+    if(id) router.push(`/admin/bookings/${id}`)
+  }
+
   return (
     <Card x-chunk="dashboard-05-chunk-3">
       {/* <CardHeader className="px-7">
@@ -65,7 +71,7 @@ const Bookings = ({params}: any) => {
       <CardContent>
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-accent">
               <TableHead className="p-2">Customer</TableHead>
               <TableHead className="p-2">Type</TableHead>
               <TableHead className="p-2">Service</TableHead>
@@ -76,7 +82,7 @@ const Bookings = ({params}: any) => {
           <TableBody>
             {data &&
               data.map((elem: any, index: any) => (
-                <TableRow className="bg-accent p-2" key={index}>
+                <TableRow className="p-2" key={index} onClick={()=>handleRowClick(elem._id)}>
                   <TableCell className="p-2">
                     <div className="font-medium">{elem.name}</div>
                     <div className="hidden text-sm text-muted-foreground md:inline">

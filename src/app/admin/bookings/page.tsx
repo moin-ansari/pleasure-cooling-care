@@ -5,7 +5,7 @@ import Bookings from "@/components/custom/admin/bookings";
 import toast from "react-hot-toast";
 import RevenueCard from "@/components/custom/admin/revenueCard";
 
-const Dashboard = () => {
+const BookingDashboard = () => {
   const [bookingsCount, setBookingsCount] = useState<number>(0);
   const [completedCount, setCompletedCount] = useState<number>(0);
   const [cancelledCount, setCancelledCount] = useState<number>(0);
@@ -41,9 +41,40 @@ const Dashboard = () => {
 
   return (
     <div className="p-3 w-full">
-      All Transactions details here coming soon.
+      <RevenueCard/>
+      <Tabs defaultValue="Bookings" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="Bookings">
+            Bookings 
+            <span className="text-yellow-400 font-extrabold">
+              ({bookingsCount})
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="Completed">
+            Completed 
+            <span className="text-green-400 font-extrabold">
+              ({completedCount})
+            </span>
+          </TabsTrigger>
+          <TabsTrigger value="Cancelled">
+            Cancelled 
+            <span className="text-gray-400 font-extrabold">
+              ({cancelledCount})
+            </span>
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="Bookings">
+          <Bookings params="pending" />
+        </TabsContent>
+        <TabsContent value="Completed">
+          <Bookings params="completed" />
+        </TabsContent>
+        <TabsContent value="Cancelled">
+          <Bookings params="cancelled" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
 
-export default Dashboard;
+export default BookingDashboard;
