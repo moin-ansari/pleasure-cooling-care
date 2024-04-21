@@ -45,7 +45,7 @@ const Bookings = ({params}: any) => {
     };
 
     fetchData();
-  }, []);
+  }, [params]);
 
   if (!data.length) {
     return (
