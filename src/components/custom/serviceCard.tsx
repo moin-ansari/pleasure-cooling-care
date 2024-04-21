@@ -93,7 +93,7 @@ const ServiceCard = () => {
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 justify-center items-center p-0 w-full">
         {
             data && data.map((element: IService, index: any)=> (
-                <Card className="flex sm:col-span-2 md:col-span-1 lg:col-span-1 h-[163px]" x-chunk="dashboard-05-chunk-0">
+                <Card key={index} className="flex sm:col-span-2 md:col-span-1 lg:col-span-1 h-[163px]" x-chunk="dashboard-05-chunk-0">
                 <CardContent className="w-1/2">
                     <div className="max-w-sm rounded overflow-hidden flex p-3 pr-0 h-full">
                         <Image width={100} height={100} className="w-full rounded" src={element.image} alt="prototype" />
