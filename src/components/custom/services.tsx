@@ -6,7 +6,7 @@ const Services = ({ services }: any) => {
     <div className="py-6 px-3 bg-primary flex justify-between">
       <div>
         <p className="text-lg font-semibold mb-1 text-primary-foreground">
-          Services:
+          Services
         </p>
         <ul className="list-disc list-inside">
           {services.map((service: any, index: any) => (

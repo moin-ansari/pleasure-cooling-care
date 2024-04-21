@@ -159,7 +159,7 @@ export default function BookingForm() {
             name="mobile"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Mobile Number: </FormLabel>
+                <FormLabel>Mobile Number </FormLabel>
                 <FormControl>
                   <Input className="text-primary" placeholder="" {...field} />
                 </FormControl>
@@ -173,7 +173,7 @@ export default function BookingForm() {
             name="email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email:</FormLabel>
+                <FormLabel>Email</FormLabel>
                 <FormControl>
                   <Input className="text-primary" placeholder="" {...field} />
                 </FormControl>
@@ -301,20 +301,20 @@ export default function BookingForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem className="text-primary" value="10:00:00">
+                        <SelectItem className="text-primary" value="10:00 AM">
                           10:00 AM
                         </SelectItem>
-                        <SelectItem className="text-primary" value="12:00:00">
+                        <SelectItem className="text-primary" value="12:00 PM">
                           12:00 PM
                         </SelectItem>
-                        <SelectItem className="text-primary" value="02:00:00">
+                        <SelectItem className="text-primary" value="02:00 PM">
                           02:00 PM
                         </SelectItem>
-                        <SelectItem className="text-primary" value="04:00:00">
+                        <SelectItem className="text-primary" value="04:00 PM">
                           04:00 PM
                         </SelectItem>
-                        <SelectItem className="text-primary" value="06:00:00">
-                          06:00 AM
+                        <SelectItem className="text-primary" value="06:00 PM">
+                          06:00 PM
                         </SelectItem>
                       </SelectContent>
                     </Select>
