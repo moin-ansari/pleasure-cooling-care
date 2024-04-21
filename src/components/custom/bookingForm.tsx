@@ -135,11 +135,11 @@ export default function BookingForm() {
   return (
     <div id="bookingForm" >
     <div className="px-3 py-6 pt-20 text-white bg-primary">
-      <div className="text-lg font-semibold">
+      <div className="text-lg font-semibold sm:w-1/2 sm:m-auto">
         Fill out form to book service now
       </div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-2 sm:w-1/2 sm:m-auto">
         <div className="flex items-center gap-3">
           <FormField
             control={form.control}
