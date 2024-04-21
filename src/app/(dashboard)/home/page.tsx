@@ -85,7 +85,6 @@ const Home = () => {
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // Here you can implement form submission logic
-    console.log("Form submitted with data:", formData);
     // Placeholder for API call or other logic
   };
 

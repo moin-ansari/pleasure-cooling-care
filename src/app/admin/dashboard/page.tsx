@@ -43,25 +43,22 @@ const Dashboard = () => {
       <Tabs defaultValue="Bookings" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="Bookings">
-            Bookings (
+            Bookings 
             <span className="text-yellow-400 font-extrabold">
-              {bookingsCount}
+              ({bookingsCount})
             </span>
-            )
           </TabsTrigger>
           <TabsTrigger value="Completed">
-            Completed (
+            Completed 
             <span className="text-green-400 font-extrabold">
-              {completedCount}
+              ({completedCount})
             </span>
-            )
           </TabsTrigger>
           <TabsTrigger value="Cancelled">
-            Cancelled (
+            Cancelled 
             <span className="text-gray-400 font-extrabold">
-              {cancelledCount}
+              ({cancelledCount})
             </span>
-            )
           </TabsTrigger>
         </TabsList>
         <TabsContent value="Bookings">

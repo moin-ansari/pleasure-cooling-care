@@ -21,7 +21,6 @@ import {
 import { AiOutlineReload } from "react-icons/ai";
 
 const Bookings = (query: any) => {
-  console.log(query);
   const [data, setData] = useState<any>([]);
 
   useEffect(() => {

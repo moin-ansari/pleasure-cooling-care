@@ -18,6 +18,8 @@ export async function POST(request: NextRequest) {
 
         const bookRequest = await new BookRequest(req);
 
+        console.log(bookRequest)
+
         const savedBookRequest = await bookRequest.save();
 
         return NextResponse.json({ status: 'success', message: "Booked Request Successfully", data: savedBookRequest})
