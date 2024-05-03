@@ -73,9 +73,11 @@ const Bookings = ({params}: any) => {
           <TableHeader>
             <TableRow className="bg-accent">
               <TableHead className="p-2">Customer</TableHead>
-              <TableHead className="p-2">Type</TableHead>
+              <TableHead className="p-2">AC</TableHead>
               <TableHead className="p-2">Service</TableHead>
-              <TableHead className="p-2">Date</TableHead>
+              <TableHead className="p-2">Schedule Date</TableHead>
+              <TableHead className="p-2">Request Date</TableHead>
+              <TableHead className="p-2">Time</TableHead>
               <TableHead className="p-2 text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -92,6 +94,8 @@ const Bookings = ({params}: any) => {
                   <TableCell className="p-2">{elem.acType}</TableCell>
                   <TableCell className="p-2">{elem.serviceType}</TableCell>
                   <TableCell className="p-2">2023-06-23</TableCell>
+                  <TableCell className="p-2">2023-06-20</TableCell>
+                  <TableCell className="p-2">{elem.time}</TableCell>
                   <TableCell className="p-2 text-right">$250.00</TableCell>
                 </TableRow>
               ))}

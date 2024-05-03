@@ -38,7 +38,7 @@ const BookingDashboard = () => {
     }
     return jsonData.count;
   };
-
+  // calc(100vh - 275px)
   return (
     <div className="p-3 w-full">
       <RevenueCard/>
