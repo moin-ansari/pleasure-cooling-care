@@ -46,6 +46,45 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 
+const serviceTime = [
+  "10:00 AM",
+  "12:00 PM",
+  "02:00 PM",
+  "04:00 PM",
+  "06:00 PM",
+]
+
+interface IServiceType {
+  name: string,
+  value: string
+}
+
+const serviceType: IServiceType[] = [
+  {
+    name: "AC Repair",
+    value: "Repair"
+  },
+  {
+    name: "Gas leak fix & refill",
+    value: "Gas leak/refill"
+  },
+  {
+    name: "Anti-rust deep clean AC service",
+    value: "Deep Clean"
+  },
+  {
+    name: "AC Service Lite",
+    value: "Service Lite"
+  },
+  {
+    name: "AC Install",
+    value: "Install"
+  },
+  {
+    name: "AC Uninstall",
+    value: "Uninstall"
+  }
+]
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -54,10 +93,7 @@ const formSchema = z.object({
   mobile: z.string().min(10, {
     message: "Mobile Number must be at least 10 characters.",
   }).max(10),
-  email: z
-    .string({
-      required_error: "Please type a valid email.",
-    }).email(),
+  email: z.string().email().optional(),
   serviceType: z.string({
     required_error: "Please select a valid service.",
   }),
@@ -97,6 +133,7 @@ export default function BookingForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     // Do something with the form values.
     // ✅ This will be type-safe and validated.
+    console.log(values)
     if(values){
       setFormData(values)
       setOpen(true)
@@ -182,40 +219,6 @@ export default function BookingForm() {
             )}
           />
           <FormField
-            control={form.control}
-            name="serviceType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Service Type</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="text-primary">
-                      <SelectValue placeholder="Please select a service" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem className="text-primary" value="installation">
-                      AC Installation
-                    </SelectItem>
-                    <SelectItem className="text-primary" value="repair">
-                      AC Repair
-                    </SelectItem>
-                    <SelectItem className="text-primary" value="gasfilling">
-                      AC GAS Filling
-                    </SelectItem>
-                    <SelectItem className="text-primary" value="coolingissue">
-                      AC Cooling Issue
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-            <FormField
               control={form.control}
               name="acType"
               render={({ field }) => (
@@ -243,6 +246,37 @@ export default function BookingForm() {
                 </FormItem>
               )}
             />
+          <FormField
+            control={form.control}
+            name="serviceType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Service Type</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger className="text-primary">
+                      <SelectValue placeholder="Please select a service" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {
+                      serviceType.map((service,index)=>{
+                        return (
+                          <SelectItem key={index} className="text-primary" value={service.value}>
+                            {service.name}
+                          </SelectItem>
+                        )
+                      })
+                    }
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className="flex items-center gap-3">
             <FormField
               control={form.control}
@@ -261,7 +295,7 @@ export default function BookingForm() {
                           )}
                         >
                           {field.value ? (
-                            format(field.value, "PPP")
+                            format(field.value, 'dd/MM/yyyy')
                           ) : (
                             <span>Pick a date</span>
                           )}
@@ -301,21 +335,15 @@ export default function BookingForm() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem className="text-primary" value="10:00 AM">
-                          10:00 AM
-                        </SelectItem>
-                        <SelectItem className="text-primary" value="12:00 PM">
-                          12:00 PM
-                        </SelectItem>
-                        <SelectItem className="text-primary" value="02:00 PM">
-                          02:00 PM
-                        </SelectItem>
-                        <SelectItem className="text-primary" value="04:00 PM">
-                          04:00 PM
-                        </SelectItem>
-                        <SelectItem className="text-primary" value="06:00 PM">
-                          06:00 PM
-                        </SelectItem>
+                        {
+                          serviceTime.map((time, index)=>{
+                            return (
+                              <SelectItem key={index} className="text-primary" value={time}>
+                                {time}
+                              </SelectItem>
+                          )
+                          })
+                        }
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -349,14 +377,13 @@ export default function BookingForm() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete your account
-                    and remove your data from our servers.
+                    By Confirming your request will be booked, make sure you are available on given time.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel onClick={()=>setOpen(false)}>Cancel</AlertDialogCancel>
                   <AlertDialogAction onClick={bookRequest}>
-                      Continue
+                      Confirm
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

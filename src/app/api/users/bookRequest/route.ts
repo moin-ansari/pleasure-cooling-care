@@ -9,12 +9,13 @@ export async function POST(request: NextRequest) {
 
         let req = await request.json();
 
-        
         if(!req){
             return NextResponse.json({ status: 'error', message: "Please fill all the fields"})
         }
+
+        let reqTime = new Date();
         
-        req = { ...req, status: "pending"} 
+        req = { ...req, status: "pending", requestedDate: reqTime }
 
         const bookRequest = await new BookRequest(req);
 

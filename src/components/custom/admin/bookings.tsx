@@ -1,14 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from "@/components/ui/card";
 import {
   Table,
@@ -20,9 +15,12 @@ import {
 } from "@/components/ui/table";
 import { AiOutlineReload } from "react-icons/ai";
 import { useRouter } from 'next/navigation';
+import { format, formatDistance } from "date-fns"
 
 const Bookings = ({params}: any) => {
   const [data, setData] = useState<any>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isError, setIsError] = useState<boolean>(false)
   const router = useRouter()
   
   useEffect(() => {
@@ -37,19 +35,34 @@ const Bookings = ({params}: any) => {
         const jsonData = await response.json();
 
         if (jsonData.status !== "success") {
+          setIsLoading(false);
+          setIsError(true);
           toast.error("Could not get data");
+        }else if(jsonData.status == "success" && jsonData.data.length == 0){
+          setIsLoading(false);
+          setIsError(true);
+        }else {
+          setIsLoading(false);
+          setIsError(false);
+          setData([...jsonData.data]);
+
         }
-        setData([...jsonData.data]);
 
       } catch (error: any) {
+        setIsLoading(false);
+        setIsError(true);
         toast.error("Error fetching data:", error);
       }
     };
 
     fetchData();
   }, [params]);
+  
+  const handleRowClick = (id: any) => {
+    if(id) router.push(`/admin/bookings/${id}`)
+  }
 
-  if (!data.length) {
+  if (isLoading) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center">
         <AiOutlineReload className="mr-2 h-4 w-4 animate-spin" />
@@ -58,10 +71,14 @@ const Bookings = ({params}: any) => {
     );
   }
 
-  const handleRowClick = (id: any) => {
-    if(id) router.push(`/admin/bookings/${id}`)
+  if (isError) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center">
+        Data is not available!
+      </div>
+    );
   }
-
+  
   return (
     <Card x-chunk="dashboard-05-chunk-3">
       {/* <CardHeader className="px-7">
@@ -76,7 +93,7 @@ const Bookings = ({params}: any) => {
               <TableHead className="p-2">AC</TableHead>
               <TableHead className="p-2">Service</TableHead>
               <TableHead className="p-2">Schedule Date</TableHead>
-              <TableHead className="p-2">Request Date</TableHead>
+              <TableHead className="p-2">Requested Date</TableHead>
               <TableHead className="p-2">Time</TableHead>
               <TableHead className="p-2 text-right">Amount</TableHead>
             </TableRow>
@@ -93,8 +110,8 @@ const Bookings = ({params}: any) => {
                   </TableCell>
                   <TableCell className="p-2">{elem.acType}</TableCell>
                   <TableCell className="p-2">{elem.serviceType}</TableCell>
-                  <TableCell className="p-2">2023-06-23</TableCell>
-                  <TableCell className="p-2">2023-06-20</TableCell>
+                  <TableCell className="p-2">{format(elem.date, 'iii, dd/MM')}</TableCell>
+                  <TableCell className="p-2">456</TableCell>
                   <TableCell className="p-2">{elem.time}</TableCell>
                   <TableCell className="p-2 text-right">$250.00</TableCell>
                 </TableRow>

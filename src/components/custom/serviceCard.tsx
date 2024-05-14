@@ -19,118 +19,91 @@ interface IService {
   acType: string;
   serviceType: string;
   price: string;
-  additionalCost?: string;
   desc?: string[];
 }
 
 const ServiceCard = () => {
-  const [data, setData] = useState<IService[]>();
-
-  useEffect(() => {
-    setData([
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC",
-        serviceType: "Install",
-        price: "1399",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC",
-        serviceType: "Uninstall",
-        price: "399",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Window AC",
-        serviceType: "Install",
-        price: "699",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Window AC",
-        serviceType: "Uninstall",
-        price: "699",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC",
-        serviceType: "Foam jet service",
-        price: "549",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC",
-        serviceType: "Jet service",
-        price: "499",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Window AC",
-        serviceType: "Foam jet service",
-        price: "479",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC",
-        serviceType: "Jet service",
-        price: "429",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC/ Window AC",
-        serviceType: "Gas filling",
-        price: "2449",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-      {
-        image: "/ac_repair.jpg",
-        acType: "Split AC/ Window AC",
-        serviceType: "Repair",
-        price: "299",
-        additionalCost: "spare parts cost",
-        desc: [
-          "Detailed issue diagnosis with same day resolution",
-          "Visit charges of ₹299 will be adjusted in the final bill"
-        ]
-      },
-    ]);
-  }, []);
+  const [data, setData] = useState<IService[]>([
+    {
+      image: "/ac_repair.jpg",
+      acType: "Split / Window",
+      serviceType: "AC Repair",
+      price: "299",
+      desc: [
+        "Detailed issue diagnosis and spare parts cost will be calculated on same day",
+        "Visit charges of ₹299 will be adjusted in the final bill"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "",
+      serviceType: "Gas leak fix & refill",
+      price: "2449",
+      desc: [
+        "Thorough diagnosis, leak identification & fixing, gas refill to avoid leakages",
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Split / Window",
+      serviceType: "Anti-rust deep clean AC service",
+      price: "649",
+      desc: [
+        "Prevents frequent gas leakages through a unique anti-rust spray"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Split / Window",
+      serviceType: "AC Service Lite",
+      price: "399",
+      desc: [
+        "Basic cleaning with water jet technology"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Split",
+      serviceType: "AC Install",
+      price: "1399",
+      desc: [
+        "Drilling, Wiring connections, installation of units & pipe fixes",
+        "Cooling rate & device checks followed by cleanup of service area",
+        "Gas check to prevent leakages"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Split",
+      serviceType: "AC Uninstall",
+      price: "649",
+      desc: [
+        "Uninstallation of indoor & outdoor units",
+        "AC packing, Cleanup of service area"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Window",
+      serviceType: "AC Install",
+      price: "699",
+      desc: [
+        "Drilling, Wiring connections, installation of unit & pipe fixes",
+        "Cooling rate & device checks followed by cleanup of service area",
+        "Gas check to prevent leakages"
+      ]
+    },
+    {
+      image: "/ac_repair.jpg",
+      acType: "Window",
+      serviceType: "AC Uninstall",
+      price: "399",
+      desc: [
+        "Uninstallation of unit",
+        "AC packing, Cleanup of service area"
+      ]
+    }
+  ]);
 
   if(!data){
     return <div className="w-full h-60 flex justify-center items-center">
@@ -151,14 +124,15 @@ const ServiceCard = () => {
               <CardContent className="w-full p-3">
                 <div className="flex justify-between w-full">
                   <CardHeader className="p-0 pr-3 w-3/5">
-                    <CardTitle className="text-sm flex justify-between">
-                      <span>{element.serviceType} ({element.acType})</span>
+                    <CardTitle className="text-sm tracking-normal">
+                      <span>{element.serviceType} </span>
+                      { element.acType && <span className="text-xs">({element.acType})</span>}
                       {/* <span>{element.serviceType}</span> */}
                     </CardTitle>
                     <div className="leading-relaxed">
                       <div className="pb-3">
-                        <span className="font-semibold">Starts at </span>
-                        <span className="text-green-500 font-semibold">₹ {element.price}</span>
+                        <span className="font-semibold text-sm tracking-normal">Price : </span>
+                        <span className="text-sm text-green-500 font-semibold tracking-normal">₹ {element.price}</span>
                       </div>
                       <Separator />
                       <ul className="list-disc p-3 pr-0 text-[10px] italic">

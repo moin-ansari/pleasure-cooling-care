@@ -14,6 +14,7 @@ interface IBookRequest extends Document {
   date: Date;
   time: string;
   status: BookingStatus;
+  requestedDate: Date;
 }
 
 // Define schema
@@ -63,6 +64,10 @@ const BookRequestSchema: Schema<IBookRequest> = new Schema({
     type: String,
     required: [true, 'Status is required'],
     enum: ["pending", "completed", "cancelled"] as BookingStatus[],
+  },
+  requestedDate: {
+    type: Date,
+    required: [true, 'Requested date is required']
   }
 });
 
