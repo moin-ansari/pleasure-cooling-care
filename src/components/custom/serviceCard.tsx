@@ -151,7 +151,7 @@ const ServiceCard = () => {
                       alt="prototype"
                     />
                     <div className="py-3">
-                      <Button variant={"outline"} className="h-8 w-full" asChild>
+                      <Button variant={"default"} className="h-8 w-full" asChild>
                         <Link href="#bookingForm">Book Request</Link>
                       </Button>
                     </div>

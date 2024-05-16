@@ -1,13 +1,12 @@
 "use client";
 import Image from "next/image";
 import React, { useState } from "react";
-import { Button } from "@/components/ui/button";
 import Experiences from "./../../../components/custom/experiences";
 import Services from "@/components/custom/services";
 import Footer from "@/components/custom/footer";
 import BookingForm from "@/components/custom/bookingForm";
-import Link from "next/link";
 import Contact from "@/components/custom/contact";
+import HeroSection from "@/components/custom/hero";
 
 // Define interface for AC technician
 interface Technician {
@@ -101,7 +100,7 @@ const Home = () => {
 
   return (
     <div>
-      <div className="flex justify-between p-3">
+      {/* <div className="flex justify-between p-3">
         <div className="w-3/5">
           <h1 className="text-2xl font-bold mb-2">{technician.name}</h1>
           <div className="text-primary text-[13px] text-justify pr-2 font-medium">
@@ -116,13 +115,8 @@ const Home = () => {
             alt={technician.name}
           />
         </div>
-      </div>
-      <div className="flex p-3 justify-between">
-        <Button variant={"outline"}><Link href="#contact">Contact Me</Link></Button>
-        <Button variant={"default"} asChild>
-          <Link href="#bookingForm">Book a Service Now</Link>
-        </Button>
-      </div>
+      </div> */}
+      <HeroSection/>
       {/* services */}
       <Services id="services" services={technician.services} />
       {/* Experience */}

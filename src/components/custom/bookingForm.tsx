@@ -171,7 +171,7 @@ export default function BookingForm() {
 
   return (
     <div id="bookingForm" >
-    <div className="px-3 py-6 pt-20 text-white bg-primary">
+    <div className="px-3 py-6 pt-20 text-white bg-blue-800">
       <div className="text-lg font-semibold sm:w-1/2 sm:m-auto">
         Fill out form to book service now
       </div>

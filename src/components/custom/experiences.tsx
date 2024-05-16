@@ -5,8 +5,8 @@ import { BsStarHalf } from "react-icons/bs";
 
 const Experiences = ({ experience }: any) => {
   return (
-    <div className="py-6 px-3 sm:w-1/2 sm:m-auto">
-      <div className="text-lg font-semibold mb-1">Experience</div>
+    <div id="experience" className="py-6 px-3 sm:w-1/2 sm:m-auto">
+      <div className="text-3xl font-bold text-gray-800 text-center mb-8">Experience</div>
       <div className="flex flex-col gap-5">
         {experience.map((item: any, index: any) => (
           <div key={index} className="flex gap-3 h-32">
