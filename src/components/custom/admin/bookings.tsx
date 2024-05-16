@@ -90,11 +90,10 @@ const Bookings = ({params}: any) => {
           <TableHeader>
             <TableRow className="bg-accent">
               <TableHead className="p-2">Customer</TableHead>
-              <TableHead className="p-2">AC</TableHead>
+              {/* <TableHead className="p-2">AC</TableHead> */}
               <TableHead className="p-2">Service</TableHead>
-              <TableHead className="p-2">Schedule Date</TableHead>
-              <TableHead className="p-2">Requested Date</TableHead>
-              <TableHead className="p-2">Time</TableHead>
+              <TableHead className="p-2">Time / Date</TableHead>
+              {/* <TableHead className="p-2">Requested Date</TableHead> */}
               <TableHead className="p-2 text-right">Amount</TableHead>
             </TableRow>
           </TableHeader>
@@ -102,18 +101,12 @@ const Bookings = ({params}: any) => {
             {data &&
               data.map((elem: any, index: any) => (
                 <TableRow className="p-2" key={index} onClick={()=>handleRowClick(elem._id)}>
-                  <TableCell className="p-2">
-                    <div className="font-medium">{elem.name}</div>
-                    <div className="hidden text-sm text-muted-foreground md:inline">
-                      {elem.email}
-                    </div>
-                  </TableCell>
-                  <TableCell className="p-2">{elem.acType}</TableCell>
-                  <TableCell className="p-2">{elem.serviceType}</TableCell>
-                  <TableCell className="p-2">{format(elem.date, 'iii, dd/MM')}</TableCell>
-                  <TableCell className="p-2">456</TableCell>
-                  <TableCell className="p-2">{elem.time}</TableCell>
-                  <TableCell className="p-2 text-right">$250.00</TableCell>
+                  <TableCell className="p-2">{elem.name}</TableCell>
+                  {/* <TableCell className="p-2">{elem.acType}</TableCell> */}
+                  <TableCell className="p-2">{elem.acType}, {elem.serviceType}</TableCell>
+                  <TableCell className="p-2">{elem.time} {format(elem.date, 'iii, dd/MM/yyyy')}</TableCell>
+                  {/* <TableCell className="p-2">456</TableCell> */}
+                  <TableCell className="p-2 text-right">650</TableCell>
                 </TableRow>
               ))}
           </TableBody>
