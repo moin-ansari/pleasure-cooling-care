@@ -10,10 +10,10 @@ const Contact = () => {
     }
 
   return (
-    <div id="contact" className="p-3">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div id="contact" className="px-3 py-8">
+      <div className="md:w-1/2 md:mx-auto">
         <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">Contact Me</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex flex-col gap-4">
           {/* Phone */}
           <div className="flex items-center gap-4">
             <FaPhoneAlt  className="text-4xl text-blue-600 mb-2" />

@@ -206,7 +206,7 @@ export default function BookingForm() {
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-1/2">
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
                       <Input
@@ -223,7 +223,7 @@ export default function BookingForm() {
                 control={form.control}
                 name="mobile"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="w-1/2">
                     <FormLabel>Mobile Number </FormLabel>
                     <FormControl>
                       <Input
@@ -262,7 +262,7 @@ export default function BookingForm() {
                   >
                     <FormControl>
                       <SelectTrigger className="text-primary">
-                        <SelectValue placeholder="Please select AC type" />
+                        <SelectValue placeholder="Select AC type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -290,7 +290,7 @@ export default function BookingForm() {
                   >
                     <FormControl>
                       <SelectTrigger className="text-primary">
-                        <SelectValue placeholder="Please select a service" />
+                        <SelectValue placeholder="Select a service" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -317,7 +317,7 @@ export default function BookingForm() {
                 name="date"
                 render={({ field }) => (
                   <FormItem className="w-1/2 mt-0">
-                    <FormLabel>Select Date</FormLabel>
+                    <FormLabel>Date</FormLabel>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
@@ -356,14 +356,14 @@ export default function BookingForm() {
                 name="time"
                 render={({ field }) => (
                   <FormItem className="w-1/2 mt-0">
-                    <FormLabel>Select Time</FormLabel>
+                    <FormLabel>Time</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger className="text-primary">
-                          <SelectValue placeholder="Please select Time" />
+                          <SelectValue placeholder="select Time" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -394,7 +394,7 @@ export default function BookingForm() {
                   <FormControl>
                     <Input
                       className="text-primary"
-                      placeholder="Please share google map location"
+                      placeholder="Fill in detail"
                       {...field}
                     />
                   </FormControl>
@@ -415,7 +415,7 @@ export default function BookingForm() {
                     >
                       <FormControl>
                         <SelectTrigger className="text-primary">
-                          <SelectValue placeholder="select city" />
+                          <SelectValue placeholder="Select city" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -448,7 +448,7 @@ export default function BookingForm() {
                     >
                       <FormControl>
                         <SelectTrigger className="text-primary">
-                          <SelectValue placeholder="select state" />
+                          <SelectValue placeholder="Select state" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -475,7 +475,7 @@ export default function BookingForm() {
                 control={form.control}
                 name="zipcode"
                 render={({ field }) => (
-                  <FormItem className="mt-0">
+                  <FormItem className="w-1/2 mt-0">
                     <FormLabel>Zip/Postal Code</FormLabel>
                     <FormControl>
                       <Input
@@ -500,7 +500,7 @@ export default function BookingForm() {
                     >
                       <FormControl>
                         <SelectTrigger className="text-primary">
-                          <SelectValue placeholder="select country" />
+                          <SelectValue placeholder="Select country" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>

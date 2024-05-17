@@ -113,12 +113,12 @@ const ServiceCard = () => {
 
   return (
     <div className="w-full">
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 justify-center items-center p-0 w-full">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 justify-center items-center p-0 w-full md:w-1/2 md:m-auto">
         {data &&
           data.map((element: IService, index: any) => (
             <Card
               key={index}
-              className="flex sm:col-span-2 md:col-span-1 lg:col-span-1"
+              className="flex sm:col-span-2 md:col-span-1 lg:col-span-1 md:h-full"
               x-chunk="dashboard-05-chunk-0"
             >
               <CardContent className="w-full p-3">
