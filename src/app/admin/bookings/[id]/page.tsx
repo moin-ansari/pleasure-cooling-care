@@ -29,6 +29,11 @@ interface IBooking {
     address: string;
     status: string;
     price?: string;
+    streetAddress: string;
+    city: string,
+    zipcode: string;
+    state: string;
+    country: string;
     "__v": number
 }
   
@@ -107,9 +112,9 @@ export default function Page({ params }: { params: { id: string } }) {
         <CardContent className="p-6 text-sm">
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-3">
-              <div className="font-semibold">Shipping Information</div>
+              <div className="font-semibold">Address Information</div>
               <address className="grid gap-0.5 not-italic text-muted-foreground">
-                <span>{data.address}</span>
+                <span>{data.streetAddress} {data.city} {data.state} {data.country} {data.zipcode}</span>
               </address>
             </div>
           </div>
@@ -120,12 +125,6 @@ export default function Page({ params }: { params: { id: string } }) {
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Customer</dt>
                 <dd>{data.name}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-muted-foreground">Email</dt>
-                <dd>
-                  <a href="mailto:">{data.email}</a>
-                </dd>
               </div>
               <div className="flex items-center justify-between">
                 <dt className="text-muted-foreground">Phone</dt>
@@ -150,14 +149,6 @@ export default function Page({ params }: { params: { id: string } }) {
             </ul>
             <Separator className="my-2" />
             <ul className="grid gap-3">
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>0.00</span>
-              </li>
-              <li className="flex items-center justify-between">
-                <span className="text-muted-foreground">Shipping</span>
-                <span>0.00</span>
-              </li>
               <li className="flex items-center justify-between">
                 <span className="text-muted-foreground">Tax</span>
                 <span>0.00</span>

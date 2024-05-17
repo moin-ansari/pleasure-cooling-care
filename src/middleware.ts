@@ -16,6 +16,10 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL( "/home" , request.url))
     }
 
+    if( path && path === "/admin"){
+        return NextResponse.redirect(new URL( "/admin/dashboard" , request.url))
+    }
+
     if( path && protectedRoute.includes(path) && !token){
         return NextResponse.redirect(new URL( "/login" , request.url))
     }
@@ -35,6 +39,7 @@ export const config = {
       "/signup",
       "/home",
       "/services",
-      "/booknow"
+      "/booknow",
+      "/admin"
     ],
   }

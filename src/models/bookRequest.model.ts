@@ -7,14 +7,17 @@ type BookingStatus = "pending" | "completed" | "cancelled";
 interface IBookRequest extends Document {
   name: string;
   mobile: string;
-  email: string;
   serviceType: string;
   acType: string;
-  address: string;
   date: Date;
   time: string;
   status: BookingStatus;
   requestedDate: Date;
+  streetAddress: string;
+  city: string,
+  zipcode: string;
+  state: string;
+  country: string;
 }
 
 // Define schema
@@ -29,16 +32,6 @@ const BookRequestSchema: Schema<IBookRequest> = new Schema({
     required: [true, 'Mobile number is required'],
     minlength: [10, 'Mobile number must be at least 10 characters']
   },
-  email: {
-    type: String,
-    required: [true, 'Email is required'],
-    validate: {
-      validator: (value: string) => {
-        return /^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/.test(value);
-      },
-      message: 'Please enter a valid email'
-    }
-  },
   serviceType: {
     type: String,
     required: [true, 'Service type is required']
@@ -46,11 +39,6 @@ const BookRequestSchema: Schema<IBookRequest> = new Schema({
   acType: {
     type: String,
     required: [true, 'AC type is required']
-  },
-  address: {
-    type: String,
-    required: [true, 'Address is required'],
-    minlength: [10, 'Address must be at least 10 characters']
   },
   date: {
     type: Date,
@@ -68,7 +56,27 @@ const BookRequestSchema: Schema<IBookRequest> = new Schema({
   requestedDate: {
     type: Date,
     required: [true, 'Requested date is required']
-  }
+  },
+  streetAddress: {
+    type: String,
+    required: [true, 'Street address is required']
+  },
+  city: {
+    type: String,
+    required: [true, 'City is required']
+  },
+  zipcode: {
+    type: String,
+    required: [true, 'zipcode is required']
+  }, 
+  state: {
+    type: String,
+    required: [true, 'state is required']
+  }, 
+  country: {
+    type: String,
+    required: [true, 'country is required']
+  } 
 });
 
 // Check if the model already exists before defining it
