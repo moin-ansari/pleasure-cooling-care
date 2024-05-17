@@ -57,7 +57,7 @@ const Home = () => {
           complaints: "150",
           ratings: [1, 1, 1, 1, 1],
         },
-        image: "/ac3.jpg",
+        image: "/service3.jpeg",
       },
       {
         logo: "/logo",
@@ -69,7 +69,7 @@ const Home = () => {
           complaints: "100",
           ratings: [1, 1, 1, 1, 0.5],
         },
-        image: "/ac2.jpg",
+        image: "/service2.jpeg",
       },
     ],
     services: [

@@ -25,7 +25,7 @@ interface IService {
 const ServiceCard = () => {
   const [data, setData] = useState<IService[]>([
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half2.jpeg",
       acType: "Split / Window",
       serviceType: "AC Repair",
       price: "299",
@@ -35,7 +35,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half1.jpeg",
       acType: "",
       serviceType: "Gas leak fix & refill",
       price: "2449",
@@ -44,7 +44,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half3.jpeg",
       acType: "Split / Window",
       serviceType: "Anti-rust deep clean AC service",
       price: "649",
@@ -53,7 +53,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half2.jpeg",
       acType: "Split / Window",
       serviceType: "AC Service Lite",
       price: "399",
@@ -62,7 +62,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half1.jpeg",
       acType: "Split",
       serviceType: "AC Install",
       price: "1399",
@@ -73,7 +73,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half3.jpeg",
       acType: "Split",
       serviceType: "AC Uninstall",
       price: "649",
@@ -83,7 +83,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half1.jpeg",
       acType: "Window",
       serviceType: "AC Install",
       price: "699",
@@ -94,7 +94,7 @@ const ServiceCard = () => {
       ]
     },
     {
-      image: "/ac_repair.jpg",
+      image: "/service_half1.jpeg",
       acType: "Window",
       serviceType: "AC Uninstall",
       price: "399",
