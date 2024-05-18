@@ -7,7 +7,13 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
         connect();    
         const searchParams = request.nextUrl.searchParams
-        const action = searchParams.get('action')
+        let param:string | null = ""
+        param = searchParams.get('params')
+        const [action, otp]:any = param?.split(',');
+
+        if(otp !== "011110"){
+            return NextResponse.json({ status: 'error', message: "Invalid OTP!"})
+        }
 
         if (action === 'cancel' || action === 'complete') {
             const updateData = { status: action === 'cancel' ? 'cancelled' : 'completed' };
