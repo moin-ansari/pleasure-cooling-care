@@ -38,6 +38,7 @@ export const config = {
       "/services",
       "/booknow",
       "/admin",
+      "/admin/dashboard",
       "/admin/bookings",
       "/admin/bookings/:path*"
     ],
