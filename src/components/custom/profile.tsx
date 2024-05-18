@@ -39,7 +39,7 @@ const Profile = () => {
   };
   return (
     <div>
-      { userData.username ? (
+      { userData.email ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -57,7 +57,7 @@ const Profile = () => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Hi, {userData?.username}</DropdownMenuLabel>
+            <DropdownMenuLabel>Hi, {userData?.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>

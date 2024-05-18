@@ -9,7 +9,11 @@ export async function POST(request: NextRequest, response: NextResponse) {
 
         connect()
         const req = await request.json();
-        const { username, email, password } = req;
+        const { secretCode, email, password } = req;
+
+        if(secretCode !== "act598@admin"){
+            return NextResponse.json({ status: "failed", message: "Invalid Secret Code!"})
+        }
 
         const existingUser = await User.findOne({ email })
 
@@ -19,7 +23,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
 
         const salt = await bcryptjs.genSalt(10);
         const hashedPassword = await bcryptjs.hash(password, salt);
-        const newUser = new User({ username, email, password: hashedPassword });
+        const newUser = new User({ secretCode, email, password: hashedPassword, isAdmin:true });
 
         const savedUser = await newUser.save();
 

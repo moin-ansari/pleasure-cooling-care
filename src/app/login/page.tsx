@@ -119,9 +119,6 @@ const Login = () => {
                     <>Login</>
                   )}
                 </Button>
-                <Button variant="outline" className="w-full">
-                  Login with Google
-                </Button>
               </form>
             </Form>
           </div>

@@ -30,7 +30,7 @@ const Register = () => {
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
     defaultValues: {
-      username: "",
+      secretCode: "",
       email: "",
       password: ""
     },
@@ -42,7 +42,7 @@ const Register = () => {
       let res = await axios.post("/api/users/signup", values)
       if(res.data.status === "success"){
         router.push("/login")
-      }else if(res.data.status === "failed"){
+      }else if(res.data.status === "failed" || res.data.status){
         setBtnLoading(false)
         toast.error(res.data.message)
       }
@@ -78,13 +78,13 @@ const Register = () => {
                 className="space-y-6"
               >
                 <div className="grid gap-2">
-                  <FormField control={form.control} name="username" render={({field})=>(
+                  <FormField control={form.control} name="secretCode" render={({field})=>(
                         <FormItem>
-                            <FormLabel>Username</FormLabel>
+                            <FormLabel>Secret Code {'(only admin access)'}</FormLabel>
                             <FormControl>
                                 <Input 
                                 {...field}
-                                    placeholder="abcd"
+                                    placeholder=""
                                     type="text" 
                                 />
                             </FormControl>
@@ -131,9 +131,6 @@ const Register = () => {
                   ) : (
                     <>Register</>
                   )}
-                </Button>
-                <Button variant="outline" className="w-full">
-                  Register with Google
                 </Button>
               </form>
             </Form>

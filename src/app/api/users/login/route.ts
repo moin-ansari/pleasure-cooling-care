@@ -30,7 +30,6 @@ export async function POST(request: NextRequest, response: NextResponse) {
 
         const tokenPayload = {
             id: existingUser._id,
-            username: existingUser.username,
             email: existingUser.email
         }
 
