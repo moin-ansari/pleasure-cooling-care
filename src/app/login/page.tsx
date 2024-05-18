@@ -39,7 +39,7 @@ const Login = () => {
     setBtnLoading(true);
     let res = await axios.post("api/users/login", values)
     if(res.data.status == "success"){
-      router.push("/home")
+      router.push("/admin")
     }else if(res.data.status == "failed"){
       setBtnLoading(false)
       toast.error(res.data.message)

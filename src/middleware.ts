@@ -10,22 +10,19 @@ export function middleware(request: NextRequest) {
 
     const isPublicPath = path === "/login" || path === "/signup"
 
-    const token = request.cookies.get("token")?.value;
+    const token = request.cookies.get("actechtoken")?.value;
+    console.log("token : ",token)
+
+    if( path && path === "/admin" && token){
+        return NextResponse.redirect(new URL( "/admin/dashboard" , request.url))
+    }
 
     if( path && path === "/"){
         return NextResponse.redirect(new URL( "/home" , request.url))
     }
-
-    if( path && path === "/admin"){
-        return NextResponse.redirect(new URL( "/admin/dashboard" , request.url))
-    }
-
-    if( path && protectedRoute.includes(path) && !token){
+    
+    if( path && path.startsWith('/admin') && !token){
         return NextResponse.redirect(new URL( "/login" , request.url))
-    }
-
-    if( path && publicRoute.includes(path) && token){
-        return NextResponse.redirect(new URL( "/home" , request.url))
     }
     
     return
@@ -34,12 +31,14 @@ export function middleware(request: NextRequest) {
 // See "Matching Paths" below to learn more
 export const config = {
     matcher: [
-        "/",
+      "/",
       "/login",
       "/signup",
       "/home",
       "/services",
       "/booknow",
-      "/admin"
+      "/admin",
+      "/admin/bookings",
+      "/admin/bookings/:path*"
     ],
   }

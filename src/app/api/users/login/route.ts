@@ -41,7 +41,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
             status: "success"
         })
 
-        res.cookies.set("token", token, { httpOnly: true });
+        res.cookies.set("actechtoken", token, { httpOnly: true });
 
         return res;
         
