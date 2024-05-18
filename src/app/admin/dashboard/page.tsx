@@ -56,7 +56,7 @@ const Dashboard = () => {
   return (
     <div className="p-3 w-full">
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-          <Card x-chunk="dashboard-01-chunk-0">
+          <Card x-chunk="dashboard-01-chunk-0" className={`${priceCount>0? 'bg-green-300': 'bg-amber-200'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">
                 Total Revenue
@@ -66,11 +66,11 @@ const Dashboard = () => {
             <CardContent className="py-3 px-6">
               <div className="text-2xl font-bold">₹{priceCount}</div>
               <p className="text-xs text-muted-foreground">
-                +20.1% from last month
+                The revenue you have earned till now
               </p>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-1">
+          <Card x-chunk="dashboard-01-chunk-1" className={`${bookingsCount+completedCount+cancelledCount>0? 'bg-green-300': 'bg-amber-200'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">
                 Total Bookings
@@ -79,9 +79,9 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="py-3 px-6 flex justify-between">
               <div>
-                <div className="text-2xl font-bold">+{bookingsCount+completedCount+cancelledCount}</div>
+                <div className="text-2xl font-bold">{bookingsCount+completedCount+cancelledCount}</div>
                   <p className="text-xs text-muted-foreground">
-                    +180.1% from last month
+                    All the bookings you get till now
                   </p>
               </div>
                 <div className="flex items-end">
@@ -91,27 +91,27 @@ const Dashboard = () => {
                 </div>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-2">
+          <Card x-chunk="dashboard-01-chunk-2" className={`${completedCount>0? 'bg-green-300': 'bg-amber-200'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">Completed Bookings</CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="py-3 px-6">
-              <div className="text-2xl font-bold">+{completedCount}</div>
+              <div className="text-2xl font-bold">{completedCount}</div>
               <p className="text-xs text-muted-foreground">
-                +19% from last month
+                Total bookings completed till now
               </p>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-3">
+          <Card x-chunk="dashboard-01-chunk-3" className={`${bookingsCount>0? 'bg-green-300': 'bg-amber-200'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">Active Bookings</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="py-3 px-6">
-              <div className="text-2xl font-bold">+{bookingsCount}</div>
+              <div className="text-2xl font-bold">{bookingsCount}</div>
               <p className="text-xs text-muted-foreground">
-                +201 since last hour
+                Total new bookings available
               </p>
             </CardContent>
           </Card>
