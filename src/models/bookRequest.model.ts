@@ -18,6 +18,7 @@ interface IBookRequest extends Document {
   zipcode: string;
   state: string;
   country: string;
+  price: number;
 }
 
 // Define schema
@@ -76,6 +77,10 @@ const BookRequestSchema: Schema<IBookRequest> = new Schema({
   country: {
     type: String,
     required: [true, 'country is required']
+  },
+  price: {
+    type: Number,
+    required: [true, 'price is required']
   } 
 });
 

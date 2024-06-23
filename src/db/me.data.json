@@ -1,0 +1,47 @@
+{
+    "name": "Hi, I'm Moin",
+    "image": "/moin.png",
+    "summary": "A highly skilled AC Technician with over 5 years of experience in the installation, repair, and maintenance of AC systems. I will troubleshoot and diagnose AC problems, responding to emergency repair requests.",
+    "experience": [
+        {
+            "logo": "/logo",
+            "company": "Urbun Company",
+            "years": "3",
+            "work": {
+                "description": "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
+                "complaints": "150",
+                "ratings": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1
+                ]
+            },
+            "image": "/service3.jpeg"
+        },
+        {
+            "logo": "/logo",
+            "company": "Voltas Service Center",
+            "years": "2",
+            "work": {
+                "description": "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
+                "complaints": "100",
+                "ratings": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    0.5
+                ]
+            },
+            "image": "/service2.jpeg"
+        }
+    ],
+    "services": [
+        "AC Repair.",
+        "AC Gas Filling.",
+        "AC Installation.",
+        "AC Cooling Issues."
+    ]
+}

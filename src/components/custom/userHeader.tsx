@@ -18,7 +18,7 @@ const UserHeader = () => {
           </div>
           <div className="flex flex-row gap-6">
           <Button asChild variant={'outline'}>
-            <Link href="/booknow">Book Now</Link>
+            <Link href="#bookingForm">Book Now</Link>
             </Button>
           </div>
         </nav>

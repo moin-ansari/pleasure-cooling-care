@@ -7,17 +7,13 @@ import Footer from "@/components/custom/footer";
 import BookingForm from "@/components/custom/bookingForm";
 import Contact from "@/components/custom/contact";
 import HeroSection from "@/components/custom/hero";
-
-// Define interface for AC technician
+import me from "../../../db/me.data.json"
 interface Technician {
   name: string;
   image: string;
   experience: Experience[];
   services: string[];
-  summery: string;
 }
-
-// Define component props
 interface LandingPageProps {
   technician: Technician;
 }
@@ -31,7 +27,6 @@ interface Experience {
 }
 
 const Home = () => {
-  // State for form fields
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -41,53 +36,12 @@ const Home = () => {
     preferredTime: "",
   });
 
-  const technician: Technician = {
-    name: "Hi, I'm Moin",
-    image: "/moin.png",
-    summery: `An highly skilled AC Technician with over 5 years of experience in the
-    installation, repair, and maintenance of AC systems. I will troubleshoot and diagnosis of AC problems, responding to emergency repair requests.`,
-    experience: [
-      {
-        logo: "/logo",
-        company: "Urbun Company",
-        years: "3",
-        work: {
-          description:
-            "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
-          complaints: "150",
-          ratings: [1, 1, 1, 1, 1],
-        },
-        image: "/service3.jpeg",
-      },
-      {
-        logo: "/logo",
-        company: "Voltas Service Center",
-        years: "2",
-        work: {
-          description:
-            "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
-          complaints: "100",
-          ratings: [1, 1, 1, 1, 0.5],
-        },
-        image: "/service2.jpeg",
-      },
-    ],
-    services: [
-      "AC Repair.",
-      "AC Gas Filling.",
-      "AC Installation.",
-      "AC Cooling Issues.",
-    ],
-  };
+  const technician: Technician = me;
 
-  // Function to handle form submission
   const handleFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Here you can implement form submission logic
-    // Placeholder for API call or other logic
   };
 
-  // Function to handle form field changes
   const handleInputChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -97,7 +51,7 @@ const Home = () => {
       [name]: value,
     });
   };
-
+  
   return (
     <div>
       {/* <div className="flex justify-between p-3">
@@ -118,7 +72,7 @@ const Home = () => {
       </div> */}
       <HeroSection/>
       {/* services */}
-      <Services id="services" services={technician.services} />
+      <Services id="services"/>
       {/* Experience */}
       <Experiences id="experiences" experience={technician.experience} />
       <BookingForm />

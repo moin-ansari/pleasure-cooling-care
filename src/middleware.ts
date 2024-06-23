@@ -6,12 +6,10 @@ import { protectedRoute, publicRoute } from './routes';
 export function middleware(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
-    console.log(path, typeof(path))
 
     const isPublicPath = path === "/login" || path === "/signup"
 
     const token = request.cookies.get("actechtoken")?.value;
-    console.log("token : ",token)
 
     if( path && path === "/admin" && token){
         return NextResponse.redirect(new URL( "/admin/dashboard" , request.url))

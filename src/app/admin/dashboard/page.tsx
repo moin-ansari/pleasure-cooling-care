@@ -17,6 +17,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import OrdersAreaChart from "@/components/custom/admin/ordersChart";
 
 const Dashboard = () => {
   const [bookingsCount, setBookingsCount] = useState<number>(0);
@@ -56,7 +57,8 @@ const Dashboard = () => {
   return (
     <div className="p-3 w-full">
       <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-          <Card x-chunk="dashboard-01-chunk-0" className={`${priceCount>0? 'bg-green-300': 'bg-amber-200'}`}>
+          <OrdersAreaChart/>
+          <Card x-chunk="dashboard-01-chunk-0" className={`${priceCount>0? 'backdrop-blur-sm bg-white/30': 'bg-orange-100'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">
                 Total Revenue
@@ -70,7 +72,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-1" className={`${bookingsCount+completedCount+cancelledCount>0? 'bg-green-300': 'bg-amber-200'}`}>
+          <Card x-chunk="dashboard-01-chunk-1" className={`${bookingsCount+completedCount+cancelledCount>0? 'bg-green-100': 'bg-orange-100'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">
                 Total Bookings
@@ -85,13 +87,13 @@ const Dashboard = () => {
                   </p>
               </div>
                 <div className="flex items-end">
-                  <Button variant={'secondary'} asChild>
+                  <Button variant={'link'} asChild>
                     <Link href="/admin/bookings">Go to bookings <ChevronRight className="h-4 w-4" /></Link>
                   </Button>
                 </div>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-2" className={`${completedCount>0? 'bg-green-300': 'bg-amber-200'}`}>
+          <Card x-chunk="dashboard-01-chunk-2" className={`${completedCount>0? 'bg-green-100': 'bg-orange-100'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">Completed Bookings</CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -103,7 +105,7 @@ const Dashboard = () => {
               </p>
             </CardContent>
           </Card>
-          <Card x-chunk="dashboard-01-chunk-3" className={`${bookingsCount>0? 'bg-green-300': 'bg-amber-200'}`}>
+          <Card x-chunk="dashboard-01-chunk-3" className={`${bookingsCount>0? 'bg-green-100': 'bg-orange-100'}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm tracking-widest font-semibold">Active Bookings</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />

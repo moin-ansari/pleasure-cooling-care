@@ -204,7 +204,7 @@ export default function Page({ params }: { params: { id: string } }) {
               </li>
               <li className="flex items-center justify-between font-semibold">
                 <span className="text-muted-foreground">Total</span>
-                <span>$329.00</span>
+                <span>{data.price}</span>
               </li>
             </ul>
           </div>

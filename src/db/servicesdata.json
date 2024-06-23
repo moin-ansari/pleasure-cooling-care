@@ -1,0 +1,81 @@
+[
+    {
+        "image": "/service_half2.jpeg",
+        "acType": "Split / Window",
+        "serviceType": "AC Repair",
+        "price": "299",
+        "desc": [
+            "Detailed issue diagnosis and spare parts cost will be calculated on same day",
+            "Visit charges of ₹299 will be adjusted in the final bill"
+        ]
+    },
+    {
+        "image": "/service_half1.jpeg",
+        "acType": "",
+        "serviceType": "Gas leak fix & refill",
+        "price": "2449",
+        "desc": [
+            "Thorough diagnosis, leak identification & fixing, gas refill to avoid leakages"
+        ]
+    },
+    {
+        "image": "/service_half3.jpeg",
+        "acType": "Split / Window",
+        "serviceType": "Anti-rust deep clean AC service",
+        "price": "649",
+        "desc": [
+            "Prevents frequent gas leakages through a unique anti-rust spray"
+        ]
+    },
+    {
+        "image": "/service_half2.jpeg",
+        "acType": "Split / Window",
+        "serviceType": "AC Service Lite",
+        "price": "399",
+        "desc": [
+            "Basic cleaning with water jet technology"
+        ]
+    },
+    {
+        "image": "/service_half1.jpeg",
+        "acType": "Split",
+        "serviceType": "AC Install",
+        "price": "1399",
+        "desc": [
+            "Drilling, Wiring connections, installation of units & pipe fixes",
+            "Cooling rate & device checks followed by cleanup of service area",
+            "Gas check to prevent leakages"
+        ]
+    },
+    {
+        "image": "/service_half3.jpeg",
+        "acType": "Split",
+        "serviceType": "AC Uninstall",
+        "price": "649",
+        "desc": [
+            "Uninstallation of indoor & outdoor units",
+            "AC packing, Cleanup of service area"
+        ]
+    },
+    {
+        "image": "/service_half1.jpeg",
+        "acType": "Window",
+        "serviceType": "AC Install",
+        "price": "699",
+        "desc": [
+            "Drilling, Wiring connections, installation of unit & pipe fixes",
+            "Cooling rate & device checks followed by cleanup of service area",
+            "Gas check to prevent leakages"
+        ]
+    },
+    {
+        "image": "/service_half1.jpeg",
+        "acType": "Window",
+        "serviceType": "AC Uninstall",
+        "price": "399",
+        "desc": [
+            "Uninstallation of unit",
+            "AC packing, Cleanup of service area"
+        ]
+    }
+]

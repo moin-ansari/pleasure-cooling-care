@@ -45,6 +45,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import servicesdata from "../../db/servicesdata.json"
+import { MdCheckCircleOutline  } from "react-icons/md";
 
 const serviceTime = [
   "10:00 AM",
@@ -53,36 +55,60 @@ const serviceTime = [
   "04:00 PM",
   "06:00 PM",
 ];
-
 interface IServiceType {
   name: string;
   value: string;
+  price?: any
 }
 
-const serviceType: IServiceType[] = [
+const serviceTypes: IServiceType[] = [
   {
     name: "AC Repair",
-    value: "Repair",
+    value: "AC Repair",
+    price: {
+      "split": 299,
+      "window": 299
+    }
   },
   {
     name: "Gas leak fix & refill",
-    value: "Gas leak/refill",
+    value: "Gas leak fix & refill",
+    price: {
+      "split": 2449,
+      "window": 2449
+    }
   },
   {
     name: "Anti-rust deep clean AC service",
-    value: "Deep Clean",
+    value: "Anti-rust deep clean AC service",
+    price: {
+      "split": 649,
+      "window": 649
+    }
   },
   {
     name: "AC Service Lite",
-    value: "Service Lite",
+    value: "AC Service Lite",
+    price: {
+      "split": 399,
+      "window": 399
+    }
   },
   {
     name: "AC Install",
-    value: "Install",
+    value: "AC Install",
+    price: {
+      "split": 1399,
+      "window": 699
+    }
   },
   {
     name: "AC Uninstall",
-    value: "Uninstall",
+    value: "AC Uninstall",
+    price: {
+      "split": 649,
+      "window": 399
+    }
   },
 ];
 
@@ -134,15 +160,16 @@ const formSchema = z.object({
 export default function BookingForm() {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({});
+  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       mobile: "",
-      serviceType: "",
-      acType: "",
-      time: "",
+      serviceType: "AC Repair",
+      acType: "window",
+      time: "10:00 AM",
       date: new Date(),
       streetAddress: "",
       city: "Bareilly",
@@ -152,13 +179,10 @@ export default function BookingForm() {
     },
   });
 
-  // 2. Define a submit handler.
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
+    const price = getPrice(values.acType, values.serviceType);
     if (values) {
-      setFormData(values);
+      setFormData({...values, price: price});
       setOpen(true);
     }
   }
@@ -172,12 +196,21 @@ export default function BookingForm() {
     if (data.status === "success") {
       toast.success(data.message);
       form.reset();
-      setOpen(false);
+      setBookingSuccess(true)
     } else if (data.status === "error") {
       toast.error(data.message);
       setOpen(false);
     }
   };
+
+  function getPrice(acType:string, serviceType:string) {
+    for (const service of serviceTypes) {
+        if (service.name === serviceType) {
+          return service?.price[acType]
+        }
+    }
+    return 0;
+  }
 
   const getUserLocation = () => {
     if ("geolocation" in navigator) {
@@ -258,7 +291,7 @@ export default function BookingForm() {
                   <FormLabel>AC Type</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    defaultValue={field.value.length? field.value: 'Select AC type'}
                   >
                     <FormControl>
                       <SelectTrigger className="text-primary">
@@ -294,7 +327,7 @@ export default function BookingForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {serviceType.map((service, index) => {
+                      {serviceTypes.map((service, index) => {
                         return (
                           <SelectItem
                             key={index}
@@ -527,6 +560,7 @@ export default function BookingForm() {
                 Submit
               </Button>
               <AlertDialog open={open}>
+                {!bookingSuccess ? 
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
@@ -545,7 +579,26 @@ export default function BookingForm() {
                       Confirm
                     </AlertDialogAction>
                   </AlertDialogFooter>
-                </AlertDialogContent>
+                </AlertDialogContent>: 
+                <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    <div className="flex flex-col items-center justify-center">
+                      <MdCheckCircleOutline className="text-green-500 w-16 h-16"/>
+                      <span>Booking Successfull!</span>
+                    </div>
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    For booking tracking try contacting us. Our expert will react out to your home, Please be available on time.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogAction onClick={() => setOpen(false)}>
+                    Back to home
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+                }
               </AlertDialog>
             </div>
           </form>
