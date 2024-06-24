@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import UserHeader from "@/components/custom/userHeader";
 
 export const metadata: Metadata = {
-  title: "AC Expert",
+  title: "Pleasure Cooling Care",
   description: "Ac Technician",
 };
 
