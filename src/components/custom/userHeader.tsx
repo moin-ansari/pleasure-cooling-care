@@ -13,7 +13,7 @@ const UserHeader = () => {
               className="flex gap-3"
             >
               <FaTools className="h-6 w-6" />
-              <span className="">AC Expert</span>
+              <span className="">Pleasure Cooling Care</span>
             </Link>
           </div>
           <div className="flex flex-row gap-6">

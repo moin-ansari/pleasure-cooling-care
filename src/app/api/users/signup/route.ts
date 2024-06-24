@@ -11,7 +11,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
         const req = await request.json();
         const { secretCode, email, password } = req;
 
-        if(secretCode !== "act598@admin"){
+        if(secretCode !== process.env.ADMIN_ACCESS_TOKEN){
             return NextResponse.json({ status: "failed", message: "Invalid Secret Code!"})
         }
 
