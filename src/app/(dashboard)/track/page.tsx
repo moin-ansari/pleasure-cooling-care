@@ -45,6 +45,10 @@ export default function TrackPage() {
   const [error, setError] = useState("");
   const [toCancel, setToCancel] = useState<TrackedBooking | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [toClaim, setToClaim] = useState<TrackedBooking | null>(null);
+  const [issue, setIssue] = useState("");
+  const [claiming, setClaiming] = useState(false);
+  const [claimError, setClaimError] = useState("");
 
   const lookup = async (number: string) => {
     setLoading(true);
@@ -103,6 +107,32 @@ export default function TrackPage() {
     } finally {
       setCancelling(false);
       setToCancel(null);
+    }
+  };
+
+  const claim = async () => {
+    if (!toClaim) return;
+    setClaiming(true);
+    setClaimError("");
+    try {
+      const res = await fetch("/api/bookings/warranty-claim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingRef: toClaim.bookingRef, mobile: searchedMobile, issue }),
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        toast.success(json.message);
+        setToClaim(null);
+        setIssue("");
+        await lookup(searchedMobile);
+      } else {
+        setClaimError(json.message || "Could not send your claim");
+      }
+    } catch {
+      setClaimError("Could not send your claim. Please try again.");
+    } finally {
+      setClaiming(false);
     }
   };
 
@@ -188,6 +218,41 @@ export default function TrackPage() {
                   <dt className="text-muted-foreground">Price</dt>
                   <dd>₹{b.price}</dd>
                 </dl>
+                {b.isWarrantyRedo && <p className="text-sm font-medium text-green-700">Free re-service under your guarantee</p>}
+                {b.warranty && (
+                  <div className="rounded-md bg-muted p-3 text-sm">
+                    {b.warranty.claim?.status === "PENDING" ? (
+                      <p>Your guarantee claim is with us. We will confirm by message shortly.</p>
+                    ) : b.warranty.claim?.status === "APPROVED" ? (
+                      <p>Your guarantee claim was approved. Your free re-service appears in this list.</p>
+                    ) : b.warranty.daysLeft > 0 ? (
+                      <p>
+                        Guaranteed until {formatDate(b.warranty.expiresAt.slice(0, 10))} ({b.warranty.daysLeft} {b.warranty.daysLeft === 1 ? "day" : "days"} left).
+                        {b.warranty.claim?.status === "REJECTED" && (
+                          <>
+                            {" "}
+                            Your last claim was declined: {b.warranty.claim.rejectReason}.
+                          </>
+                        )}
+                      </p>
+                    ) : (
+                      <p>The guarantee on this service ended on {formatDate(b.warranty.expiresAt.slice(0, 10))}.</p>
+                    )}
+                    {b.warranty.canClaim && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="mt-2"
+                        onClick={() => {
+                          setClaimError("");
+                          setToClaim(b);
+                        }}
+                      >
+                        Problem again? Claim a free re-service
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {b.canCancel && (
                   <div className="pt-1">
                     <Button variant="outline" size="sm" className="text-red-600" onClick={() => setToCancel(b)}>
@@ -200,6 +265,42 @@ export default function TrackPage() {
           );
         })}
       </div>
+
+      <AlertDialog open={toClaim !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Claim a free re-service</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toClaim?.serviceType} ({toClaim?.bookingRef}). Tell us what is wrong and we will review it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-1.5">
+            <label htmlFor="claim-issue" className="text-sm font-medium">
+              What is the problem?
+            </label>
+            <textarea id="claim-issue" className="rounded-md border bg-background px-3 py-2 text-sm" value={issue} onChange={(e) => setIssue(e.target.value)} maxLength={500} rows={4} aria-describedby={claimError ? "claim-error" : undefined} />
+            {claimError && (
+              <p id="claim-error" role="alert" className="text-sm text-red-600">
+                {claimError}
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setToClaim(null)} disabled={claiming}>
+              Close
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                claim();
+              }}
+              disabled={claiming || issue.trim().length < 10}
+            >
+              {claiming ? "Sending..." : "Send claim"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={toCancel !== null}>
         <AlertDialogContent>

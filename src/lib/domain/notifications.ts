@@ -163,6 +163,45 @@ export async function notifyPriceChanged(bookingId: string, oldPrice: number): P
     });
 }
 
+export async function notifyWarrantyClaim(claimId: string): Promise<void> {
+    await safely("claim", async () => {
+        const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });
+        const adminPhone = await getAdminAlertPhone();
+        if (!claim || !adminPhone) return;
+        const b = claim.originalBooking;
+        await dispatch({ template: "ADMIN_WARRANTY_CLAIM", to: adminPhone, bookingId: b.id, vars: [b.bookingRef, firstName(b.customerName), absoluteUrl("/admin/warranty")] });
+    });
+}
+
+// Customer hears the approval, and the technician gets the free job like any other assignment.
+export async function notifyWarrantyApproved(claimId: string): Promise<void> {
+    await safely("claim-approved", async () => {
+        const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });
+        if (!claim?.createdBookingId) return;
+        const redo = await loadBooking(claim.createdBookingId);
+        if (!redo?.technician) return;
+        const arrival = redo.confirmedArrivalAt ? formatIst(redo.confirmedArrivalAt) : requestedWhen(redo);
+        await Promise.all([
+            dispatch({
+                template: "WARRANTY_APPROVED",
+                to: redo.mobile,
+                bookingId: redo.id,
+                vars: [firstName(redo.customerName), claim.originalBooking.bookingRef, redo.bookingRef, redo.technician.name, arrival, trackUrl()],
+            }),
+            dispatch({ template: "TECHNICIAN_ASSIGNED", to: redo.technician.phone, bookingId: redo.id, vars: [redo.bookingRef, redo.serviceType, redo.town, arrival, absoluteUrl("/technician")] }),
+        ]);
+    });
+}
+
+export async function notifyWarrantyRejected(claimId: string): Promise<void> {
+    await safely("claim-rejected", async () => {
+        const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });
+        if (!claim) return;
+        const b = claim.originalBooking;
+        await dispatch({ template: "WARRANTY_REJECTED", to: b.mobile, bookingId: b.id, vars: [firstName(b.customerName), b.bookingRef, claim.rejectReason ?? "Not covered", BUSINESS.phone] });
+    });
+}
+
 export interface NotificationItem {
     id: string;
     createdAt: string;

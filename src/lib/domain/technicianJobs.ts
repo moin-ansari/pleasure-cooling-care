@@ -147,7 +147,8 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
             laborAmount: update.laborAmount,
             partsAmount: update.partsAmount,
             amountCollected: update.amountCollected,
-            warrantyExpiresAt: days > 0 ? new Date(now.getTime() + days * 86400000) : null,
+            // A free re-service does not start a new guarantee.
+            warrantyExpiresAt: days > 0 && !current.warrantyClaimOfId ? new Date(now.getTime() + days * 86400000) : null,
             commissionRateApplied: terms.ratePercent.toFixed(2),
             commissionFlatApplied: terms.flatAmount.toFixed(2),
         };

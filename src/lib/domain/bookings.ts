@@ -6,6 +6,7 @@ import { addDaysToDateString, istDateString, istDateToUtc, istMinutesOfDay, slot
 import { BookingInputSchema, CancelInputSchema, TrackInputSchema } from "@/schema/booking";
 import { MAX_BOOKING_DAYS_AHEAD, MIN_LEAD_MINUTES, isCancellableByCustomer, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
+import { warrantyStatusOf, type WarrantyStatus } from "./warranty";
 import { checkCoverage } from "./serviceAreas";
 import { notifyBookingReceived, notifyCancelled } from "./notifications";
 import { fail, ok, type Result } from "./result";
@@ -26,6 +27,8 @@ export interface TrackedBooking {
     confirmedArrivalAt: string | null;
     technicianFirstName: string | null;
     canCancel: boolean;
+    isWarrantyRedo: boolean;
+    warranty: WarrantyStatus | null;
 }
 
 function withNormalizedMobile(raw: unknown): unknown {
@@ -122,7 +125,11 @@ export async function trackBookingsByPhone(raw: unknown): Promise<Result<Tracked
             where: { mobile: parsed.data.mobile },
             orderBy: { createdAt: "desc" },
             take: 20,
-            include: { serviceArea: { select: { district: true } }, technician: { select: { name: true } } },
+            include: {
+                serviceArea: { select: { district: true } },
+                technician: { select: { name: true } },
+                claimsAgainst: { orderBy: { createdAt: "desc" }, select: { status: true, rejectReason: true, createdAt: true } },
+            },
         }),
         getCancelCutoff(),
     ]);
@@ -142,6 +149,8 @@ export async function trackBookingsByPhone(raw: unknown): Promise<Result<Tracked
             confirmedArrivalAt: b.confirmedArrivalAt ? b.confirmedArrivalAt.toISOString() : null,
             technicianFirstName: b.technician ? b.technician.name.trim().split(/\s+/)[0] : null,
             canCancel: isCancellableByCustomer(b.status, cutoff),
+            isWarrantyRedo: !!b.warrantyClaimOfId,
+            warranty: warrantyStatusOf(b),
         }))
     );
 }

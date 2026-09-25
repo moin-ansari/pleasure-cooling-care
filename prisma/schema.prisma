@@ -255,6 +255,9 @@ model WarrantyClaim {
   issueDescription  String
   status            ClaimStatus @default(PENDING)
   resolvedById      String?
+  resolvedAt        DateTime?
+  // Why it was turned down, shown to the customer.
+  rejectReason      String?
   createdBookingId  String?     @unique
   createdBooking    Booking?    @relation("ClaimCreated", fields: [createdBookingId], references: [id], onDelete: SetNull)
   createdAt         DateTime    @default(now())

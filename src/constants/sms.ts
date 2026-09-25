@@ -71,6 +71,24 @@ export const SMS_TEMPLATES = {
         text: "New booking {#var#}: {#var#} in {#var#} from {#var#}. Assign a technician: {#var#}",
         vars: ["ref", "service", "district", "name", "url"],
     },
+    WARRANTY_APPROVED: {
+        label: "Guarantee claim approved",
+        recipient: "customer",
+        text: "Hi {#var#}, your guarantee claim for booking {#var#} is approved. A free re-service {#var#} is booked with {#var#} on {#var#}. Track it at {#var#}",
+        vars: ["name", "ref", "newRef", "technician", "arrival", "url"],
+    },
+    WARRANTY_REJECTED: {
+        label: "Guarantee claim declined",
+        recipient: "customer",
+        text: "Hi {#var#}, we could not approve your guarantee claim for booking {#var#}. Reason: {#var#}. Call {#var#} for help.",
+        vars: ["name", "ref", "reason", "phone"],
+    },
+    ADMIN_WARRANTY_CLAIM: {
+        label: "Guarantee claim alert",
+        recipient: "admin",
+        text: "New guarantee claim on booking {#var#} from {#var#}. Review it: {#var#}",
+        vars: ["ref", "name", "url"],
+    },
 } as const satisfies Record<string, SmsTemplate>;
 
 export type SmsTemplateKey = keyof typeof SMS_TEMPLATES;
