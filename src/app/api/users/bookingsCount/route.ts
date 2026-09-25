@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from '@/db/db';
-import BookRequest from "@/models/bookRequest.model"
+import { db } from "@/lib/db";
 import { requireAdmin } from "@/helpers/requireAdmin";
+import { legacyStatusFilter } from "@/helpers/legacyBooking";
 
 export async function POST(request: NextRequest) {
     try {
@@ -9,12 +9,9 @@ export async function POST(request: NextRequest) {
         const unauthorized = await requireAdmin(request);
         if (unauthorized) return unauthorized;
 
-        connect();
+        const query = request.nextUrl.searchParams.get('bookings')
 
-        const searchParams = request.nextUrl.searchParams
-        const query = searchParams.get('bookings')
-
-        const count: any = await BookRequest.countDocuments({ status: query })
+        const count = await db.booking.count({ where: legacyStatusFilter(query) })
 
         return NextResponse.json({ status: 'success', count: count})
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from "@/db/db";
-import User from "@/models/user.model";
+import { db } from "@/lib/db";
 import { getDataFromToken } from "./getDataFromToken";
 
 // Returns null when the request carries a valid admin session, otherwise a 401 response to return as-is.
@@ -8,8 +7,7 @@ import { getDataFromToken } from "./getDataFromToken";
 export async function requireAdmin(request: NextRequest): Promise<NextResponse | null> {
     try {
         const userId = getDataFromToken(request);
-        connect();
-        const user = await User.findById(userId).select("isAdmin");
+        const user = await db.adminUser.findUnique({ where: { id: userId }, select: { isAdmin: true } });
         if (user?.isAdmin) return null;
     } catch {
         // invalid, expired or missing token

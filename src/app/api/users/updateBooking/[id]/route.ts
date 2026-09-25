@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from '@/db/db';
-import BookRequest from "@/models/bookRequest.model"
+import { db } from "@/lib/db";
 import { requireAdmin } from "@/helpers/requireAdmin";
+import { toLegacyBooking } from "@/helpers/legacyBooking";
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string }}) {
     try {
@@ -9,21 +9,37 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         const unauthorized = await requireAdmin(request);
         if (unauthorized) return unauthorized;
 
-        connect();
         const action = request.nextUrl.searchParams.get('params')?.split(',')[0];
 
-        if (action === 'cancel' || action === 'complete') {
-            const updateData = { status: action === 'cancel' ? 'cancelled' : 'completed' };
-
-            let updatedBooking = await BookRequest.findByIdAndUpdate(
-                params.id,
-                updateData,
-                { new: true }
-            );
-            return NextResponse.json({ status: 'success', data: updatedBooking})
+        if (action !== 'cancel' && action !== 'complete') {
+            return NextResponse.json({ status: 'error', message: "error while updatation"})
         }
 
-        return NextResponse.json({ status: 'error', message: "error while updatation"})
+        const current = await db.booking.findUnique({ where: { id: params.id }, select: { status: true } });
+
+        if (!current) {
+            return NextResponse.json({ status: 'error', message: "Booking not found"})
+        }
+
+        if (current.status === "COMPLETED" || current.status === "CANCELLED") {
+            return NextResponse.json({ status: 'error', message: "Booking is already closed"})
+        }
+
+        const toStatus = action === 'cancel' ? "CANCELLED" : "COMPLETED";
+
+        const updatedBooking = await db.booking.update({
+            where: { id: params.id },
+            data: {
+                status: toStatus,
+                completedAt: toStatus === "COMPLETED" ? new Date() : undefined,
+                statusHistory: {
+                    create: { fromStatus: current.status, toStatus, changedByType: "admin" },
+                },
+            },
+            include: { serviceArea: true },
+        });
+
+        return NextResponse.json({ status: 'success', data: toLegacyBooking(updatedBooking)})
 
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})

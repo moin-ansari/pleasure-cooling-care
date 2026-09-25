@@ -1,7 +1,6 @@
-import { connect } from "@/db/db";
-import User from '@/models/user.model';
 import { NextRequest, NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
+import { db } from "@/lib/db";
 import { isRateLimited } from "@/helpers/rateLimit";
 
 export async function POST(request: NextRequest, response: NextResponse) {
@@ -13,25 +12,26 @@ export async function POST(request: NextRequest, response: NextResponse) {
         }
 
         const req = await request.json();
-        const { secretCode, email, password } = req;
+        const { secretCode, password } = req;
+        const email = String(req.email ?? "").trim().toLowerCase();
 
         if(!process.env.ADMIN_ACCESS_TOKEN || secretCode !== process.env.ADMIN_ACCESS_TOKEN){
             return NextResponse.json({ status: "failed", message: "Invalid Secret Code!"})
         }
 
-        connect()
+        if(!email || typeof password !== "string" || password.length < 8){
+            return NextResponse.json({ status: "failed", message: "Enter an email and a password of at least 8 characters"})
+        }
 
-        const existingUser = await User.findOne({ email })
+        const existingUser = await db.adminUser.findUnique({ where: { email } })
 
         if(existingUser) {
             return NextResponse.json({ status: "failed", message: "user already exist!"})
         }
 
-        const salt = await bcryptjs.genSalt(10);
-        const hashedPassword = await bcryptjs.hash(password, salt);
-        const newUser = new User({ secretCode, email, password: hashedPassword, isAdmin:true });
+        const hashedPassword = await bcryptjs.hash(password, 10);
 
-        await newUser.save();
+        await db.adminUser.create({ data: { email, password: hashedPassword, isAdmin: true } });
 
         return NextResponse.json({ status: "success", message: "user registered successfully" })
 

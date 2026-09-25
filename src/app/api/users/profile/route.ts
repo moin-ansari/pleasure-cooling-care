@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from '@/db/db';
+import { db } from "@/lib/db";
 import { getDataFromToken } from "@/helpers/getDataFromToken";
-import User from '@/models/user.model';
 
 export async function POST(request: NextRequest) {
     try {
 
-        connect();
+        const userId: string = getDataFromToken(request);
 
-        const userId: any = getDataFromToken(request);        
-
-        const user = await User.findOne({ _id: userId }).select("-password");
+        const user = await db.adminUser.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, isAdmin: true, createdAt: true },
+        });
 
         if(!user) {
             return NextResponse.json({ status: 'failed', message: "user not found"})
         }
 
         return NextResponse.json({ status: 'success', message: "user found", data: user})
-        
+
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})
     }

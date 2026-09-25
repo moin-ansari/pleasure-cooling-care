@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from '@/db/db';
-import BookRequest from "@/models/bookRequest.model"
+import { db } from "@/lib/db";
 import { requireAdmin } from "@/helpers/requireAdmin";
+import { toLegacyBooking } from "@/helpers/legacyBooking";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string }}) {
     try {
@@ -9,11 +9,16 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         const unauthorized = await requireAdmin(request);
         if (unauthorized) return unauthorized;
 
-        connect();
+        const booking = await db.booking.findUnique({
+            where: { id: params.id },
+            include: { serviceArea: true },
+        })
 
-        const bookings: any = await BookRequest.findOne({_id: params.id})
+        if (!booking) {
+            return NextResponse.json({ status: 'error', message: "Booking not found"})
+        }
 
-        return NextResponse.json({ status: 'success', data: bookings})
+        return NextResponse.json({ status: 'success', data: toLegacyBooking(booking)})
 
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})

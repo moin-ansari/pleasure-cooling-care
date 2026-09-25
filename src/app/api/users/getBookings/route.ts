@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { connect } from '@/db/db';
-import BookRequest from "@/models/bookRequest.model"
+import { db } from "@/lib/db";
 import { requireAdmin } from "@/helpers/requireAdmin";
+import { legacyStatusFilter, toLegacyBooking } from "@/helpers/legacyBooking";
 
 export async function POST(request: NextRequest) {
     try {
@@ -9,14 +9,15 @@ export async function POST(request: NextRequest) {
         const unauthorized = await requireAdmin(request);
         if (unauthorized) return unauthorized;
 
-        connect();
+        const query = request.nextUrl.searchParams.get('bookings')
 
-        const searchParams = request.nextUrl.searchParams
-        const query = searchParams.get('bookings')
+        const bookings = await db.booking.findMany({
+            where: legacyStatusFilter(query),
+            include: { serviceArea: true },
+            orderBy: { createdAt: "desc" },
+        })
 
-        const bookings: any = await BookRequest.find({status: query})
-
-        return NextResponse.json({ status: 'success', data: bookings})
+        return NextResponse.json({ status: 'success', data: bookings.map(toLegacyBooking)})
 
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})
