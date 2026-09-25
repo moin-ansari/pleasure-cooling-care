@@ -49,7 +49,7 @@ const HeroSection = ({ districts = [] }: { districts?: string[] }) => {
           AC, refrigerator, washing machine and geyser service at your doorstep. Book online and track your booking with just your mobile number.
         </p>
         <Button variant={"link"} className="w-1/2 text-white mb-6" asChild>
-          <Link href="#experience" className="text-yellow-300 italic underline underline-offset-8">Click to Read Experience</Link>
+          <Link href="#services" className="text-yellow-300 italic underline underline-offset-8">See our services and prices</Link>
         </Button>
         <h2 className="text-1xl text-white font-medium">Providing all services at your doorstep</h2>
         <ul className="grid grid-cols-4 items-start justify-between text-1xl text-white font-medium pt-6 pb-4 gap-2">

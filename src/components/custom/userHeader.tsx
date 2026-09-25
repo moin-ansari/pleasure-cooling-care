@@ -25,6 +25,9 @@ const UserHeader = () => {
             </Link>
           </div>
           <div className="flex flex-row items-center gap-2 sm:gap-4">
+            <Link href="/about" className="hidden sm:inline text-sm whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
+              About
+            </Link>
             <Link href="/track" className="text-sm whitespace-nowrap text-muted-foreground hover:text-foreground hover:underline">
               Track booking
             </Link>

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Experiences from "@/components/custom/experiences";
 import Services from "@/components/custom/services";
 import Footer from "@/components/custom/footer";
 import BookingForm from "@/components/custom/bookingForm";
@@ -7,7 +6,6 @@ import Contact from "@/components/custom/contact";
 import HeroSection from "@/components/custom/hero";
 import CoverageLinks from "@/components/custom/seo/CoverageLinks";
 import JsonLd from "@/components/custom/seo/JsonLd";
-import me from "@/db/me.data.json";
 import ReviewsSection from "@/components/custom/seo/ReviewsSection";
 import { getStorefrontAreas, getStorefrontReviews, getStorefrontServices } from "@/lib/storefront";
 import { localBusinessJsonLd } from "@/lib/seo";
@@ -35,7 +33,6 @@ const Home = async () => {
       <Services id="services" services={services} />
       <CoverageLinks areas={areas} services={services} />
       <ReviewsSection reviews={reviews.reviews} summary={reviews.summary} />
-      <Experiences id="experiences" experience={me.experience} />
       <BookingForm services={services} areas={areas} />
       <Contact />
       <Footer />
