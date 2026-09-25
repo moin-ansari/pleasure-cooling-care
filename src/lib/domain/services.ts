@@ -30,18 +30,6 @@ export async function getService(id: string): Promise<ServiceItem | null> {
     return db.service.findUnique({ where: { id }, select });
 }
 
-export async function findActiveService(category: ApplianceCategoryValue, subType: string, serviceType: string) {
-    return db.service.findFirst({
-        where: {
-            applianceCategory: category,
-            applianceSubType: { equals: subType, mode: "insensitive" },
-            serviceType,
-            isActive: true,
-        },
-        select: { id: true, price: true, serviceType: true, applianceSubType: true, warrantyDurationDays: true },
-    });
-}
-
 function toData(input: ServiceInput) {
     return {
         applianceCategory: input.applianceCategory,

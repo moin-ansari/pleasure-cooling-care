@@ -46,6 +46,12 @@ const Header = () => {
           >
             Services
           </Link>
+          <Link
+            href="/admin/service-areas"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Areas
+          </Link>
         </nav>
       </Sheet>
       <DropdownMenu>

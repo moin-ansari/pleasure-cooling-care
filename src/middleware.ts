@@ -40,6 +40,7 @@ export const config = {
       "/admin/bookings",
       "/admin/bookings/:path*",
       "/admin/services",
-      "/admin/services/:path*"
+      "/admin/services/:path*",
+      "/admin/service-areas"
     ],
   }

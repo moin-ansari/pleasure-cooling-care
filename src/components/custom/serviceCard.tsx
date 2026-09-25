@@ -22,13 +22,14 @@ interface ServiceGroup {
   price: number;
   image: string | null;
   desc: string[];
+  warrantyDays: number;
 }
 
 // Types of the same appliance sharing a service, price and description show as one card ("Split / Window").
 function groupServices(services: ServiceItem[]): ServiceGroup[] {
   const groups = new Map<string, ServiceGroup>();
   for (const s of services) {
-    const key = [s.applianceCategory, s.serviceType, s.price, s.image ?? "", s.desc.join("|")].join("::");
+    const key = [s.applianceCategory, s.serviceType, s.price, s.image ?? "", s.desc.join("|"), s.warrantyDurationDays].join("::");
     const existing = groups.get(key);
     if (existing) {
       existing.subTypes.push(s.applianceSubType);
@@ -41,6 +42,7 @@ function groupServices(services: ServiceItem[]): ServiceGroup[] {
         price: s.price,
         image: s.image,
         desc: s.desc,
+        warrantyDays: s.warrantyDurationDays,
       });
     }
   }
@@ -84,6 +86,9 @@ const ServiceCard = ({ services }: { services: ServiceItem[] }) => {
                       <span className="font-semibold text-sm tracking-normal">Price : </span>
                       <span className="text-sm text-green-500 font-semibold tracking-normal">₹ {element.price}</span>
                     </div>
+                    {element.warrantyDays > 0 && (
+                      <p className="text-xs text-muted-foreground pb-2">{element.warrantyDays}-day guarantee</p>
+                    )}
                     <Separator />
                     <ul className="list-disc p-3 pr-0 text-[10px] italic">
                       {element.desc.map((el, index) => (

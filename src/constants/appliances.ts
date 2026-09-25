@@ -9,12 +9,17 @@ export const CATEGORY_LABELS: Record<ApplianceCategoryValue, string> = {
     GEYSER: "Geyser",
 };
 
+// URL segment of each appliance's landing page, e.g. /bareilly/ac-repair-service
 export const CATEGORY_SLUGS: Record<ApplianceCategoryValue, string> = {
-    AC: "ac",
-    REFRIGERATOR: "refrigerator",
-    WASHING_MACHINE: "washing-machine",
-    GEYSER: "geyser",
+    AC: "ac-repair-service",
+    REFRIGERATOR: "refrigerator-repair-service",
+    WASHING_MACHINE: "washing-machine-repair-service",
+    GEYSER: "geyser-repair-service",
 };
+
+export function categoryFromSlug(slug: string): ApplianceCategoryValue | null {
+    return APPLIANCE_CATEGORIES.find((c) => CATEGORY_SLUGS[c] === slug) ?? null;
+}
 
 export const SUB_TYPES: Record<ApplianceCategoryValue, string[]> = {
     AC: ["Split", "Window"],
