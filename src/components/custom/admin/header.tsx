@@ -40,6 +40,12 @@ const Header = () => {
           >
             Bookings
           </Link>
+          <Link
+            href="/admin/services"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Services
+          </Link>
         </nav>
       </Sheet>
       <DropdownMenu>

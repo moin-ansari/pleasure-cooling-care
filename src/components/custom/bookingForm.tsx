@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,7 +45,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import servicesdata from "../../db/servicesdata.json"
+import type { ServiceItem } from "@/types/service";
 import { MdCheckCircleOutline  } from "react-icons/md";
 
 const serviceTime = [
@@ -60,57 +60,6 @@ interface IServiceType {
   value: string;
   price?: any
 }
-
-const serviceTypes: IServiceType[] = [
-  {
-    name: "AC Repair",
-    value: "AC Repair",
-    price: {
-      "split": 299,
-      "window": 299
-    }
-  },
-  {
-    name: "Gas leak fix & refill",
-    value: "Gas leak fix & refill",
-    price: {
-      "split": 2449,
-      "window": 2449
-    }
-  },
-  {
-    name: "Anti-rust deep clean AC service",
-    value: "Anti-rust deep clean AC service",
-    price: {
-      "split": 649,
-      "window": 649
-    }
-  },
-  {
-    name: "AC Service Lite",
-    value: "AC Service Lite",
-    price: {
-      "split": 399,
-      "window": 399
-    }
-  },
-  {
-    name: "AC Install",
-    value: "AC Install",
-    price: {
-      "split": 1399,
-      "window": 699
-    }
-  },
-  {
-    name: "AC Uninstall",
-    value: "AC Uninstall",
-    price: {
-      "split": 649,
-      "window": 399
-    }
-  },
-];
 
 const city: string[] = ["Bareilly"];
 
@@ -157,7 +106,17 @@ const formSchema = z.object({
   }),
 });
 
-export default function BookingForm() {
+export default function BookingForm({ services }: { services: ServiceItem[] }) {
+  const serviceTypes = useMemo(() => {
+    const byName = new Map<string, IServiceType>();
+    for (const s of services.filter((s) => s.applianceCategory === "AC")) {
+      const entry = byName.get(s.serviceType) ?? { name: s.serviceType, value: s.serviceType, price: {} };
+      entry.price[s.applianceSubType.toLowerCase()] = s.price;
+      byName.set(s.serviceType, entry);
+    }
+    return Array.from(byName.values());
+  }, [services]);
+
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({});
   const [bookingSuccess, setBookingSuccess] = useState(false);
@@ -167,7 +126,7 @@ export default function BookingForm() {
     defaultValues: {
       name: "",
       mobile: "",
-      serviceType: "AC Repair",
+      serviceType: serviceTypes[0]?.value ?? "",
       acType: "window",
       time: "10:00 AM",
       date: new Date(),

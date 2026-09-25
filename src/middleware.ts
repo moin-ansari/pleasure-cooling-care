@@ -38,6 +38,8 @@ export const config = {
       "/admin",
       "/admin/dashboard",
       "/admin/bookings",
-      "/admin/bookings/:path*"
+      "/admin/bookings/:path*",
+      "/admin/services",
+      "/admin/services/:path*"
     ],
   }

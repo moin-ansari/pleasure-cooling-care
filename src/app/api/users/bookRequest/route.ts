@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { getServicePrice } from "@/helpers/servicePrice";
+import { SUB_TYPES } from "@/constants/appliances";
+import { findActiveService } from "@/lib/domain/services";
 import { generateBookingRef } from "@/lib/bookingRef";
 
 export async function POST(request: NextRequest) {
@@ -13,9 +14,10 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'error', message: "Please fill all the fields"})
         }
 
-        const price = getServicePrice(body.serviceType, body.acType);
+        const subType = SUB_TYPES.AC.find((t) => t.toLowerCase() === String(body.acType ?? "").toLowerCase());
+        const service = subType ? await findActiveService("AC", subType, String(body.serviceType ?? "")) : null;
 
-        if(price === null){
+        if(!service || !subType){
             return NextResponse.json({ status: 'error', message: "Selected service is not available"})
         }
 
@@ -45,7 +47,6 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ status: 'error', message: "Sorry, we don't serve this area yet"})
         }
 
-        const subType = String(body.acType);
         const data = {
             source: "WEB" as const,
             status: "NEW" as const,
@@ -58,9 +59,10 @@ export async function POST(request: NextRequest) {
             date,
             time: String(body.time),
             applianceCategory: "AC" as const,
-            applianceSubType: subType.charAt(0).toUpperCase() + subType.slice(1).toLowerCase(),
-            serviceType: String(body.serviceType),
-            price,
+            serviceId: service.id,
+            applianceSubType: subType,
+            serviceType: service.serviceType,
+            price: service.price,
             statusHistory: { create: { toStatus: "NEW" as const, changedByType: "customer" } },
         };
 
