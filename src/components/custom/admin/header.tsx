@@ -65,6 +65,12 @@ const Header = () => {
             Guarantee
           </Link>
           <Link
+            href="/admin/reviews"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Reviews
+          </Link>
+          <Link
             href="/admin/finance"
             className="text-muted-foreground transition-colors hover:text-foreground"
           >

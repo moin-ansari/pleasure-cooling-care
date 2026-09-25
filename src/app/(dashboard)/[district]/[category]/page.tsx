@@ -11,7 +11,8 @@ import JsonLd from "@/components/custom/seo/JsonLd";
 import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, CATEGORY_SLUGS, categoryFromSlug } from "@/constants/appliances";
 import { CATEGORY_CONTENT, buildFaqs } from "@/constants/seoContent";
 import { breadcrumbJsonLd, faqJsonLd, localBusinessJsonLd, serviceJsonLd } from "@/lib/seo";
-import { districtSlug, getStorefrontAreas, getStorefrontServices } from "@/lib/storefront";
+import ReviewsSection from "@/components/custom/seo/ReviewsSection";
+import { districtSlug, getStorefrontAreas, getStorefrontReviews, getStorefrontServices } from "@/lib/storefront";
 
 export const revalidate = 300;
 
@@ -60,6 +61,7 @@ export default async function CategoryPage({ params }: Props) {
   const content = CATEGORY_CONTENT[category];
   const slug = districtSlug(area.district);
   const faqs = buildFaqs(area.district, areas.map((a) => a.district), category);
+  const categoryReviews = (await getStorefrontReviews()).reviews.filter((r) => r.applianceCategory === category);
 
   return (
     <div>
@@ -119,6 +121,7 @@ export default async function CategoryPage({ params }: Props) {
           </ol>
         </section>
 
+        <ReviewsSection reviews={categoryReviews} heading={`${CATEGORY_LABELS[category]} customer reviews`} />
         <FaqList faqs={faqs} />
         <CoverageLinks areas={areas} services={services} excludeAreaId={area.id} heading="Also serving" />
       </main>

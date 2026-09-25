@@ -6,6 +6,7 @@ import { addDaysToDateString, istDateString, istDateToUtc, istMinutesOfDay, slot
 import { BookingInputSchema, CancelInputSchema, TrackInputSchema } from "@/schema/booking";
 import { MAX_BOOKING_DAYS_AHEAD, MIN_LEAD_MINUTES, isCancellableByCustomer, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
+import { canReviewBooking, type ReviewState } from "./reviews";
 import { warrantyStatusOf, type WarrantyStatus } from "./warranty";
 import { checkCoverage } from "./serviceAreas";
 import { notifyBookingReceived, notifyCancelled } from "./notifications";
@@ -28,6 +29,8 @@ export interface TrackedBooking {
     technicianFirstName: string | null;
     canCancel: boolean;
     isWarrantyRedo: boolean;
+    canReview: boolean;
+    review: ReviewState | null;
     warranty: WarrantyStatus | null;
 }
 
@@ -129,6 +132,7 @@ export async function trackBookingsByPhone(raw: unknown): Promise<Result<Tracked
                 serviceArea: { select: { district: true } },
                 technician: { select: { name: true } },
                 claimsAgainst: { orderBy: { createdAt: "desc" }, select: { status: true, rejectReason: true, createdAt: true } },
+                review: { select: { rating: true, comment: true } },
             },
         }),
         getCancelCutoff(),
@@ -150,6 +154,8 @@ export async function trackBookingsByPhone(raw: unknown): Promise<Result<Tracked
             technicianFirstName: b.technician ? b.technician.name.trim().split(/\s+/)[0] : null,
             canCancel: isCancellableByCustomer(b.status, cutoff),
             isWarrantyRedo: !!b.warrantyClaimOfId,
+            canReview: canReviewBooking(b),
+            review: b.review,
             warranty: warrantyStatusOf(b),
         }))
     );

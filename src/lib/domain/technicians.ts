@@ -3,6 +3,8 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import type { CreateTechnicianInput, UpdateTechnicianInput } from "@/schema/technician";
+import { nextRankProgress, type NextRank } from "@/lib/rank";
+import { getRankThresholds } from "./reviews";
 import { fail, ok, type Result } from "./result";
 
 export const MAX_PIN_ATTEMPTS = 5;
@@ -228,11 +230,13 @@ export interface TechnicianSelf {
     experienceYears: number | null;
     specializations: ApplianceCategoryValue[];
     districts: string[];
+    nextRank: NextRank | null;
 }
 
 export async function getTechnicianSelf(id: string): Promise<TechnicianSelf | null> {
     const t = await db.technician.findUnique({ where: { id }, include: { serviceAreas: { select: { district: true } } } });
     if (!t) return null;
+    const thresholds = await getRankThresholds();
     return {
         id: t.id,
         name: t.name,
@@ -245,5 +249,6 @@ export async function getTechnicianSelf(id: string): Promise<TechnicianSelf | nu
         experienceYears: t.experienceYears,
         specializations: t.specializations,
         districts: t.serviceAreas.map((a) => a.district),
+        nextRank: nextRankProgress(t.rank, t.jobsCompletedCount, t.averageRating, thresholds),
     };
 }

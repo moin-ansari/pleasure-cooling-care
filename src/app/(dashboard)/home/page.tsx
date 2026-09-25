@@ -8,7 +8,8 @@ import HeroSection from "@/components/custom/hero";
 import CoverageLinks from "@/components/custom/seo/CoverageLinks";
 import JsonLd from "@/components/custom/seo/JsonLd";
 import me from "@/db/me.data.json";
-import { getStorefrontAreas, getStorefrontServices } from "@/lib/storefront";
+import ReviewsSection from "@/components/custom/seo/ReviewsSection";
+import { getStorefrontAreas, getStorefrontReviews, getStorefrontServices } from "@/lib/storefront";
 import { localBusinessJsonLd } from "@/lib/seo";
 
 // Admin edits refresh the page immediately via the "storefront" tag; this is the fallback.
@@ -25,14 +26,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const Home = async () => {
-  const [services, areas] = await Promise.all([getStorefrontServices(), getStorefrontAreas()]);
+  const [services, areas, reviews] = await Promise.all([getStorefrontServices(), getStorefrontAreas(), getStorefrontReviews()]);
 
   return (
     <div>
-      <JsonLd data={localBusinessJsonLd(areas)} />
+      <JsonLd data={localBusinessJsonLd(areas, reviews)} />
       <HeroSection districts={areas.map((a) => a.district)} />
       <Services id="services" services={services} />
       <CoverageLinks areas={areas} services={services} />
+      <ReviewsSection reviews={reviews.reviews} summary={reviews.summary} />
       <Experiences id="experiences" experience={me.experience} />
       <BookingForm services={services} areas={areas} />
       <Contact />

@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { listServices } from "@/lib/domain/services";
 import { listServiceAreas } from "@/lib/domain/serviceAreas";
+import { getPublicReviews } from "@/lib/domain/reviews";
 import { slugify } from "@/lib/slug";
 
 export const STOREFRONT_TAG = "storefront";
@@ -13,6 +14,8 @@ export const getStorefrontServices = unstable_cache(() => listServices({ activeO
 export const getStorefrontAreas = unstable_cache(() => listServiceAreas({ activeOnly: true }), ["storefront-areas"], {
     tags: [STOREFRONT_TAG],
 });
+
+export const getStorefrontReviews = unstable_cache(() => getPublicReviews(12), ["storefront-reviews"], { tags: [STOREFRONT_TAG] });
 
 export function districtSlug(district: string): string {
     return slugify(district);

@@ -3,11 +3,14 @@ import { CATEGORY_LABELS, type ApplianceCategoryValue } from "@/constants/applia
 import type { Faq } from "@/constants/seoContent";
 import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
 import type { ServiceItem } from "@/types/service";
+import type { PublicReview, ReviewSummary } from "@/lib/domain/reviews";
 import { SITE_URL, absoluteUrl } from "@/lib/site";
 
 const BUSINESS_ID = `${SITE_URL}/#business`;
 
-export function localBusinessJsonLd(areas: ServiceAreaItem[]) {
+// Ratings are added only when there are real, public reviews.
+export function localBusinessJsonLd(areas: ServiceAreaItem[], reviews?: { reviews: PublicReview[]; summary: ReviewSummary }) {
+    const rated = reviews && reviews.summary.count > 0 ? reviews : null;
     return {
         "@context": "https://schema.org",
         "@type": "LocalBusiness",
@@ -24,6 +27,18 @@ export function localBusinessJsonLd(areas: ServiceAreaItem[]) {
             addressCountry: BUSINESS.address.country,
         },
         areaServed: areas.map((a) => ({ "@type": "AdministrativeArea", name: `${a.district}, ${a.state}` })),
+        ...(rated
+            ? {
+                  aggregateRating: { "@type": "AggregateRating", ratingValue: rated.summary.average, reviewCount: rated.summary.count, bestRating: 5, worstRating: 1 },
+                  review: rated.reviews.map((r) => ({
+                      "@type": "Review",
+                      author: { "@type": "Person", name: r.customerName },
+                      datePublished: r.date,
+                      reviewRating: { "@type": "Rating", ratingValue: r.rating, bestRating: 5, worstRating: 1 },
+                      ...(r.comment ? { reviewBody: r.comment } : {}),
+                  })),
+              }
+            : {}),
     };
 }
 

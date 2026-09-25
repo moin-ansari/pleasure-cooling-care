@@ -47,6 +47,16 @@ export default function ProfilePage() {
         </div>
       </section>
 
+      {me.nextRank && (
+        <section className="rounded-lg border bg-background p-4 text-sm shadow-sm" aria-label="Next rank">
+          <p className="font-medium">Next rank: {RANK_LABEL[me.nextRank.rank]}</p>
+          <p className="text-muted-foreground">
+            {me.nextRank.jobsNeeded > 0 ? `${me.nextRank.jobsNeeded} more completed jobs` : "Enough completed jobs"}
+            {me.nextRank.ratingNeeded !== null ? ` and an average rating of ${me.nextRank.ratingNeeded.toFixed(1)} or more` : ""}.
+          </p>
+        </section>
+      )}
+
       <section className="rounded-lg border bg-background p-4 text-sm shadow-sm">
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2">
           <dt className="text-muted-foreground">Experience</dt>

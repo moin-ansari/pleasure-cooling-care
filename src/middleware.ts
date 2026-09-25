@@ -47,6 +47,7 @@ export const config = {
       "/admin/technicians/:path*",
       "/admin/notifications",
       "/admin/warranty",
+      "/admin/reviews",
       "/admin/finance",
       "/admin/finance/:path*",
       "/technician",

@@ -49,6 +49,11 @@ export default function TrackPage() {
   const [issue, setIssue] = useState("");
   const [claiming, setClaiming] = useState(false);
   const [claimError, setClaimError] = useState("");
+  const [toReview, setToReview] = useState<TrackedBooking | null>(null);
+  const [stars, setStars] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState("");
 
   const lookup = async (number: string) => {
     setLoading(true);
@@ -107,6 +112,33 @@ export default function TrackPage() {
     } finally {
       setCancelling(false);
       setToCancel(null);
+    }
+  };
+
+  const review = async () => {
+    if (!toReview) return;
+    setReviewing(true);
+    setReviewError("");
+    try {
+      const res = await fetch("/api/bookings/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingRef: toReview.bookingRef, mobile: searchedMobile, rating: stars, comment: comment || undefined }),
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        toast.success(json.message);
+        setToReview(null);
+        setStars(0);
+        setComment("");
+        await lookup(searchedMobile);
+      } else {
+        setReviewError(json.message || "Could not save your review");
+      }
+    } catch {
+      setReviewError("Could not save your review. Please try again.");
+    } finally {
+      setReviewing(false);
     }
   };
 
@@ -218,6 +250,27 @@ export default function TrackPage() {
                   <dt className="text-muted-foreground">Price</dt>
                   <dd>₹{b.price}</dd>
                 </dl>
+                {b.review && (
+                  <p className="text-sm text-muted-foreground">
+                    Your review: <span aria-label={`${b.review.rating} out of 5 stars`}>{"★".repeat(b.review.rating)}{"☆".repeat(5 - b.review.rating)}</span>
+                    {b.review.comment ? ` "${b.review.comment}"` : ""}
+                  </p>
+                )}
+                {b.canReview && (
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setReviewError("");
+                        setStars(0);
+                        setToReview(b);
+                      }}
+                    >
+                      Rate your technician
+                    </Button>
+                  </div>
+                )}
                 {b.isWarrantyRedo && <p className="text-sm font-medium text-green-700">Free re-service under your guarantee</p>}
                 {b.warranty && (
                   <div className="rounded-md bg-muted p-3 text-sm">
@@ -265,6 +318,59 @@ export default function TrackPage() {
           );
         })}
       </div>
+
+      <AlertDialog open={toReview !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>How was the service?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {toReview?.serviceType} by {toReview?.technicianFirstName ?? "our technician"}. Your name and review will be shown on our website.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3">
+            <div role="radiogroup" aria-label="Rating" className="flex gap-1">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  role="radio"
+                  aria-checked={stars === n}
+                  aria-label={`${n} ${n === 1 ? "star" : "stars"}`}
+                  onClick={() => setStars(n)}
+                  className={`h-11 w-11 rounded-md border text-2xl leading-none ${n <= stars ? "text-amber-500" : "text-gray-300"}`}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-1.5">
+              <label htmlFor="review-comment" className="text-sm font-medium">
+                Comment (optional)
+              </label>
+              <textarea id="review-comment" className="rounded-md border bg-background px-3 py-2 text-sm" value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={3} />
+            </div>
+            {reviewError && (
+              <p role="alert" className="text-sm text-red-600">
+                {reviewError}
+              </p>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setToReview(null)} disabled={reviewing}>
+              Close
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                review();
+              }}
+              disabled={reviewing || stars === 0}
+            >
+              {reviewing ? "Sending..." : "Submit review"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={toClaim !== null}>
         <AlertDialogContent>
