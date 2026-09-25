@@ -176,10 +176,13 @@ model Booking {
   applianceSubType  String
   serviceType       String
 
-  price           Int
-  laborAmount     Int  @default(0)
-  partsAmount     Int  @default(0)
-  amountCollected Int?
+  price                 Int
+  laborAmount           Int      @default(0)
+  partsAmount           Int      @default(0)
+  amountCollected       Int?
+  // The commission terms in force when the job was completed, kept so later corrections use the same terms.
+  commissionRateApplied Decimal? @db.Decimal(5, 2)
+  commissionFlatApplied Decimal? @db.Decimal(10, 2)
 
   technicianId String?
   technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)

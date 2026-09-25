@@ -2,10 +2,11 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MdWorkOutline, MdPersonOutline } from "react-icons/md";
+import { MdWorkOutline, MdPersonOutline, MdCurrencyRupee } from "react-icons/md";
 
 const ITEMS = [
   { href: "/technician", label: "Jobs", Icon: MdWorkOutline, match: (p: string) => p === "/technician" || p.startsWith("/technician/jobs") },
+  { href: "/technician/earnings", label: "Earnings", Icon: MdCurrencyRupee, match: (p: string) => p.startsWith("/technician/earnings") },
   { href: "/technician/profile", label: "Profile", Icon: MdPersonOutline, match: (p: string) => p.startsWith("/technician/profile") },
 ];
 

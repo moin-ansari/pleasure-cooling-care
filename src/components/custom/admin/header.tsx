@@ -59,6 +59,12 @@ const Header = () => {
             Technicians
           </Link>
           <Link
+            href="/admin/finance"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Finance
+          </Link>
+          <Link
             href="/admin/notifications"
             className="text-muted-foreground transition-colors hover:text-foreground"
           >

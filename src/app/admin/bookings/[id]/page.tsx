@@ -48,6 +48,11 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   const [priceBusy, setPriceBusy] = useState(false);
   const [priceError, setPriceError] = useState("");
 
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fix, setFix] = useState({ labor: "", parts: "", collected: "", note: "" });
+  const [fixBusy, setFixBusy] = useState(false);
+  const [fixError, setFixError] = useState("");
+
   const [cancelOpen, setCancelOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [cancelBusy, setCancelBusy] = useState(false);
@@ -111,6 +116,31 @@ export default function BookingPage({ params }: { params: { id: string } }) {
       setPriceError("Could not update the price");
     } finally {
       setPriceBusy(false);
+    }
+  };
+
+  const saveFix = async () => {
+    setFixBusy(true);
+    setFixError("");
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/amounts`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ laborAmount: Number(fix.labor), partsAmount: Number(fix.parts), amountCollected: Number(fix.collected), note: fix.note }),
+      });
+      const json = await res.json();
+      if (json.status === "success") {
+        const change = json.data.commissionChange as number;
+        toast.success(change === 0 ? "Amounts corrected" : `Amounts corrected. Commission changed by ${change > 0 ? "+" : "-"}₹${Math.abs(change)}`);
+        setBooking(json.data.booking);
+        setFixOpen(false);
+      } else {
+        setFixError(json.message || "Could not correct the amounts");
+      }
+    } catch {
+      setFixError("Could not correct the amounts");
+    } finally {
+      setFixBusy(false);
     }
   };
 
@@ -265,6 +295,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                     <Row label="Service charge">₹{booking.laborAmount}</Row>
                     <Row label="Parts">₹{booking.partsAmount}</Row>
                     <Row label="Cash collected">₹{booking.amountCollected ?? 0}</Row>
+                    <Row label="Your commission">{booking.commission !== null ? `₹${booking.commission}` : "None"}</Row>
                     <Row label="Completed">{booking.completedAt ? dt(booking.completedAt) : "-"}</Row>
                     {booking.warrantyExpiresAt && <Row label="Guarantee until">{dt(booking.warrantyExpiresAt)}</Row>}
                   </>
@@ -272,6 +303,63 @@ export default function BookingPage({ params }: { params: { id: string } }) {
                 {booking.warrantyRedoOfRef && <Row label="Free re-service of">{booking.warrantyRedoOfRef}</Row>}
                 {booking.technicianNotes && booking.status === "DELAYED" && <Row label="Delay reason">{booking.technicianNotes}</Row>}
               </dl>
+              {booking.status === "COMPLETED" && (
+                <div className="mt-4 border-t pt-3">
+                  {fixOpen ? (
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="grid gap-1">
+                          <label htmlFor="fix-labor" className="text-xs font-medium">
+                            Service charge
+                          </label>
+                          <Input id="fix-labor" type="number" inputMode="numeric" min={0} value={fix.labor} onChange={(e) => setFix({ ...fix, labor: e.target.value })} />
+                        </div>
+                        <div className="grid gap-1">
+                          <label htmlFor="fix-parts" className="text-xs font-medium">
+                            Parts
+                          </label>
+                          <Input id="fix-parts" type="number" inputMode="numeric" min={0} value={fix.parts} onChange={(e) => setFix({ ...fix, parts: e.target.value })} />
+                        </div>
+                        <div className="grid gap-1">
+                          <label htmlFor="fix-collected" className="text-xs font-medium">
+                            Cash collected
+                          </label>
+                          <Input id="fix-collected" type="number" inputMode="numeric" min={0} value={fix.collected} onChange={(e) => setFix({ ...fix, collected: e.target.value })} />
+                        </div>
+                      </div>
+                      <label htmlFor="fix-note" className="sr-only">
+                        Reason
+                      </label>
+                      <Input id="fix-note" placeholder="Why are you correcting this?" value={fix.note} onChange={(e) => setFix({ ...fix, note: e.target.value })} />
+                      {fixError && (
+                        <p role="alert" className="text-sm text-red-600">
+                          {fixError}
+                        </p>
+                      )}
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" onClick={() => setFixOpen(false)} disabled={fixBusy}>
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={saveFix} disabled={fixBusy}>
+                          {fixBusy ? "Saving..." : "Save corrections"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setFix({ labor: String(booking.laborAmount), parts: String(booking.partsAmount), collected: String(booking.amountCollected ?? 0), note: "" });
+                        setFixError("");
+                        setFixOpen(true);
+                      }}
+                    >
+                      Correct amounts
+                    </Button>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

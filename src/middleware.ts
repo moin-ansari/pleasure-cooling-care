@@ -46,6 +46,8 @@ export const config = {
       "/admin/technicians",
       "/admin/technicians/:path*",
       "/admin/notifications",
+      "/admin/finance",
+      "/admin/finance/:path*",
       "/technician",
       "/technician/:path*"
     ],

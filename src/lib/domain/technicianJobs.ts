@@ -3,6 +3,8 @@ import { istDateString, slotToMinutes } from "@/lib/time";
 import { TECHNICIAN_TRANSITIONS, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { JobStatusUpdateSchema } from "@/schema/technicianJob";
+import { commissionNote, commissionTermsFor } from "./finance";
+import { computeCommission } from "@/lib/money";
 import { notifyArriving, notifyCompleted, notifyDelayed } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
@@ -123,6 +125,8 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
     const now = new Date();
     let data: Record<string, unknown> = {};
     let note: string | null = null;
+    let commission = 0;
+    let commissionText = "";
 
     if (update.status === "ARRIVING") {
         data = { etaAt: new Date(now.getTime() + update.etaMinutes * 60000) };
@@ -135,12 +139,17 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
             ? await db.service.findUnique({ where: { id: current.serviceId }, select: { warrantyDurationDays: true } })
             : null;
         const days = service?.warrantyDurationDays ?? 0;
+        const terms = await commissionTermsFor(!!current.warrantyClaimOfId);
+        commission = computeCommission(update.laborAmount, terms);
+        commissionText = commissionNote(update.laborAmount, terms);
         data = {
             completedAt: now,
             laborAmount: update.laborAmount,
             partsAmount: update.partsAmount,
             amountCollected: update.amountCollected,
             warrantyExpiresAt: days > 0 ? new Date(now.getTime() + days * 86400000) : null,
+            commissionRateApplied: terms.ratePercent.toFixed(2),
+            commissionFlatApplied: terms.flatAmount.toFixed(2),
         };
     }
 
@@ -157,6 +166,11 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
         });
         if (update.status === "COMPLETED") {
             await tx.technician.update({ where: { id: technicianId }, data: { jobsCompletedCount: { increment: 1 } } });
+            if (commission > 0) {
+                await tx.ledgerEntry.create({
+                    data: { technicianId, bookingId: id, type: "COMMISSION_OWED", amount: commission.toFixed(2), note: commissionText },
+                });
+            }
         }
         return true;
     });

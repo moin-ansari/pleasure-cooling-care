@@ -145,6 +145,8 @@ export interface AdminBookingDetail extends AdminBookingListItem {
     amountCollected: number | null;
     completedAt: string | null;
     warrantyExpiresAt: string | null;
+    // Commission the business earns on a completed job, after any corrections. Null until the job is completed.
+    commission: number | null;
     warrantyRedoOfRef: string | null;
     cancelReason: string | null;
     technicianNotes: string | null;
@@ -184,6 +186,11 @@ export async function getBookingDetail(id: string): Promise<AdminBookingDetail |
         return "System";
     };
 
+    const commissionSum =
+        b.status === "COMPLETED"
+            ? await db.ledgerEntry.aggregate({ _sum: { amount: true }, where: { bookingId: b.id, type: { in: ["COMMISSION_OWED", "ADJUSTMENT"] } } })
+            : null;
+
     const open = OPEN_STATUSES.includes(b.status);
     return {
         ...toListItem(b),
@@ -200,6 +207,7 @@ export async function getBookingDetail(id: string): Promise<AdminBookingDetail |
         amountCollected: b.amountCollected,
         completedAt: b.completedAt?.toISOString() ?? null,
         warrantyExpiresAt: b.warrantyExpiresAt?.toISOString() ?? null,
+        commission: commissionSum ? Math.round(Number(commissionSum._sum.amount ?? 0) * 100) / 100 : null,
         warrantyRedoOfRef: b.warrantyClaimOf?.bookingRef ?? null,
         cancelReason: b.cancelReason,
         technicianNotes: b.technicianNotes,
