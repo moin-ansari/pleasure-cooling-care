@@ -24,10 +24,10 @@ const Header = () => {
         className="flex items-center gap-2 text-lg font-semibold md:text-base"
       >
         <Package2 className="h-6 w-6" />
-        <span className="sr-only">Acme Inc</span>
+        <span className="sr-only">Pleasure Cooling Care admin</span>
       </Link>
       <Sheet>
-        <nav className="gap-6 text-lg font-medium flex flex-row md:items-center md:gap-5 md:text-sm lg:gap-6">
+        <nav className="min-w-0 gap-4 text-sm font-medium flex flex-row items-center overflow-x-auto whitespace-nowrap md:gap-5 lg:gap-6">
           <Link
             href="/admin/dashboard"
             className="text-muted-foreground transition-colors hover:text-foreground"

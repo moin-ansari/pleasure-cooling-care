@@ -9,20 +9,12 @@ import JobStatusBadge from "@/components/custom/technician/JobStatusBadge";
 import { techFetch } from "@/components/custom/technician/techFetch";
 import { clockTime, friendlyDay } from "@/components/custom/technician/techFormat";
 import { CATEGORY_LABELS } from "@/constants/appliances";
+import { mapsLinkFor } from "@/lib/maps";
 import type { JobDetail } from "@/lib/domain/technicianJobs";
 
 type Mode = "eta" | "delay" | "complete" | null;
 
 const ETA_CHOICES = [15, 30, 45, 60, 90];
-
-function mapsLink(job: JobDetail): string | null {
-  if (job.lat !== null && job.lng !== null) return `https://www.google.com/maps/dir/?api=1&destination=${job.lat},${job.lng}`;
-  if (job.streetAddress) {
-    const query = `${job.streetAddress}, ${job.town}, ${job.district} ${job.pincode ?? ""}`;
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-  }
-  return null;
-}
 
 export default function JobPage({ params }: { params: { id: string } }) {
   const [job, setJob] = useState<JobDetail | null>(null);
@@ -108,7 +100,7 @@ export default function JobPage({ params }: { params: { id: string } }) {
   if (!job) return <p className="py-10 text-center text-muted-foreground">Loading...</p>;
 
   const can = (status: string) => job.nextStatuses.includes(status as never);
-  const directions = mapsLink(job);
+  const directions = mapsLinkFor(job);
   const setLaborAmount = (value: string) => {
     setLabor(value);
     if (!collectedTouched) setCollected(String(Number(value || 0) + Number(parts || 0)));

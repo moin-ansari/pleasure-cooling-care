@@ -65,7 +65,7 @@ export default function ServiceAreasPage() {
       </p>
 
       <Card className="mb-4">
-        <CardContent className="pt-6">
+        <CardContent className="px-6 pb-6 pt-6">
           <form onSubmit={add} className="flex flex-wrap items-end gap-3">
             <div className="grid gap-1.5 flex-1 min-w-[140px]">
               <label className="text-sm font-medium" htmlFor="area-state">State</label>

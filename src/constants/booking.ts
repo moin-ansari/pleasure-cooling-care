@@ -49,3 +49,39 @@ export function isCancellableByCustomer(status: BookingStatusValue, cutoff: Book
     const cutoffIndex = ACTIVE_STATUS_ORDER.indexOf(cutoff);
     return index !== -1 && cutoffIndex !== -1 && index < cutoffIndex;
 }
+
+// Admin booking lists. "active" covers everything between confirmed and finished.
+export type BookingGroup = "new" | "active" | "completed" | "cancelled" | "all";
+
+export const BOOKING_GROUP_STATUSES: Record<Exclude<BookingGroup, "all">, BookingStatusValue[]> = {
+    new: ["NEW"],
+    active: ["CONFIRMED", "ARRIVING", "WORKING", "DELAYED"],
+    completed: ["COMPLETED"],
+    cancelled: ["CANCELLED"],
+};
+
+export const BOOKING_GROUPS: BookingGroup[] = ["new", "active", "completed", "cancelled", "all"];
+
+export const BOOKING_GROUP_LABELS: Record<BookingGroup, string> = {
+    new: "New",
+    active: "Active",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    all: "All",
+};
+
+// A new booking still unassigned after this long is highlighted in the admin list.
+export const UNASSIGNED_ALERT_MINUTES = 15;
+
+export const ADMIN_STATUS_LABELS: Record<BookingStatusValue, string> = {
+    NEW: "New",
+    CONFIRMED: "Confirmed",
+    ARRIVING: "On the way",
+    WORKING: "Working",
+    DELAYED: "Delayed",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+};
+
+// Admin can still change these; completed and cancelled bookings are closed.
+export const OPEN_STATUSES: BookingStatusValue[] = ["NEW", "CONFIRMED", "ARRIVING", "WORKING", "DELAYED"];

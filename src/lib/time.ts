@@ -43,3 +43,15 @@ export function slotToMinutes(slot: string): number {
     if (match[3] === "PM") hour += 12;
     return hour * 60 + Number(match[2]);
 }
+
+// "02:00 PM" -> "14:00"
+export function slotToHHmm(slot: string): string {
+    const minutes = slotToMinutes(slot);
+    if (minutes < 0) return "10:00";
+    return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+}
+
+// "2026-09-26T14:00" typed as India time -> the matching instant.
+export function istLocalToUtc(local: string): Date {
+    return new Date(`${local.length === 16 ? `${local}:00` : local}${IST_OFFSET}`);
+}

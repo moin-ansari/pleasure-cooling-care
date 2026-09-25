@@ -184,7 +184,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
         <CardHeader>
           <CardTitle className="text-base">Personal details</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
           <Field id="t-name" label="Full name">
             <Input id="t-name" {...bind("name")} />
           </Field>
@@ -225,7 +225,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
         <CardHeader>
           <CardTitle className="text-base">Login and work</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4">
+        <CardContent className="grid gap-4 px-6 pb-6">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="t-email" label="Work email" hint="The technician logs in with this email and a PIN.">
               <Input id="t-email" type="email" autoComplete="off" {...bind("workEmail")} />
@@ -296,7 +296,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
         <CardHeader>
           <CardTitle className="text-base">Bank and ID (optional)</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
+        <CardContent className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
           <Field id="t-holder" label="Account holder name">
             <Input id="t-holder" {...bind("accountHolderName")} />
           </Field>
