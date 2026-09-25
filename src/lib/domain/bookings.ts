@@ -7,6 +7,7 @@ import { BookingInputSchema, CancelInputSchema, TrackInputSchema } from "@/schem
 import { MAX_BOOKING_DAYS_AHEAD, MIN_LEAD_MINUTES, isCancellableByCustomer, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { checkCoverage } from "./serviceAreas";
+import { notifyBookingReceived, notifyCancelled } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
 type BookingSource = "WEB" | "CHATBOT" | "VOICE" | "ADMIN";
@@ -101,6 +102,7 @@ export async function createBooking(
     for (let attempt = 0; attempt < 3; attempt++) {
         try {
             const booking = await db.booking.create({ data: { ...data, bookingRef: generateBookingRef() } });
+            await notifyBookingReceived(booking.id);
             return ok({ bookingRef: booking.bookingRef, price: booking.price });
         } catch (error) {
             const collision = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -168,5 +170,6 @@ export async function cancelBooking(raw: unknown): Promise<Result<{ bookingRef: 
         },
     });
 
+    await notifyCancelled(booking.id);
     return ok({ bookingRef: booking.bookingRef });
 }

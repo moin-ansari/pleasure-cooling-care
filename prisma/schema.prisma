@@ -66,6 +66,7 @@ enum ClaimStatus {
 enum NotificationStatus {
   SENT
   FAILED
+  SKIPPED
 }
 
 model AdminUser {
@@ -317,8 +318,15 @@ model NotificationLog {
   template         String
   status           NotificationStatus
   providerResponse String?
+  body             String?
+  vars             Json?
+  attempts         Int                @default(1)
   createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
 
+  @@index([status])
+  @@index([createdAt])
+  @@index([to, createdAt])
   @@map("notification_logs")
 }
 

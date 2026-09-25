@@ -55,3 +55,13 @@ export function slotToHHmm(slot: string): string {
 export function istLocalToUtc(local: string): Date {
     return new Date(`${local.length === 16 ? `${local}:00` : local}${IST_OFFSET}`);
 }
+
+// "26 Sep, 4:00 pm" in India time.
+export function formatIst(date: Date): string {
+    return date.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
+}
+
+// "Sat, 26 Sep" in India time.
+export function formatIstDay(date: Date): string {
+    return date.toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+}

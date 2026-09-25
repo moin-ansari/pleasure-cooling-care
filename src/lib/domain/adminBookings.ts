@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
-import { addDaysToDateString, istDateString, istDateToUtc, istLocalToUtc } from "@/lib/time";
+import { addDaysToDateString, formatIst, istDateString, istDateToUtc, istLocalToUtc } from "@/lib/time";
 import {
     BOOKING_GROUP_STATUSES,
     OPEN_STATUSES,
@@ -11,6 +11,7 @@ import {
 } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { AssignInputSchema, CancelInputSchema, PriceInputSchema } from "@/schema/adminBooking";
+import { notifyAssigned, notifyCancelled, notifyPriceChanged } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
 const PAGE_SIZE = 20;
@@ -274,9 +275,6 @@ export async function listAssignableTechnicians(bookingId: string): Promise<Assi
     return items.sort((a, b) => fit(b) - fit(a) || a.activeJobs - b.activeJobs || a.name.localeCompare(b.name));
 }
 
-const formatIst = (date: Date) =>
-    date.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
-
 // Confirms the booking and assigns a technician in one step. Also used to reassign or change the arrival time.
 export async function assignBooking(bookingId: string, adminId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
     const parsed = AssignInputSchema.safeParse(raw);
@@ -330,6 +328,7 @@ export async function assignBooking(bookingId: string, adminId: string, raw: unk
         before: { technicianId: booking.technicianId, status: booking.status },
         after: { technicianId: technician.id, status: "CONFIRMED", arrivalAt: arrival.toISOString() },
     });
+    await notifyAssigned(bookingId, booking.technicianId);
 
     return ok((await getBookingDetail(bookingId))!);
 }
@@ -364,6 +363,7 @@ export async function cancelBookingByAdmin(bookingId: string, adminId: string, r
         before: { status: booking.status },
         after: { status: "CANCELLED", reason: parsed.data.reason },
     });
+    await notifyCancelled(bookingId);
 
     return ok((await getBookingDetail(bookingId))!);
 }
@@ -400,6 +400,7 @@ export async function updateBookingPrice(bookingId: string, adminId: string, raw
         before: { price: booking.price },
         after: { price: parsed.data.price, note: parsed.data.note ?? null },
     });
+    await notifyPriceChanged(bookingId, booking.price);
 
     return ok((await getBookingDetail(bookingId))!);
 }

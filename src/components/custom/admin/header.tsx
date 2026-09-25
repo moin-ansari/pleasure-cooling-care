@@ -58,6 +58,12 @@ const Header = () => {
           >
             Technicians
           </Link>
+          <Link
+            href="/admin/notifications"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Messages
+          </Link>
         </nav>
       </Sheet>
       <DropdownMenu>

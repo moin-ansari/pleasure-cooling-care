@@ -3,6 +3,7 @@ import { istDateString, slotToMinutes } from "@/lib/time";
 import { TECHNICIAN_TRANSITIONS, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { JobStatusUpdateSchema } from "@/schema/technicianJob";
+import { notifyArriving, notifyCompleted, notifyDelayed } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
 export interface JobListItem {
@@ -161,6 +162,10 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
     });
 
     if (!changed) return fail("conflict", "This job was just updated. Please refresh.");
+
+    if (update.status === "ARRIVING") await notifyArriving(id);
+    else if (update.status === "DELAYED") await notifyDelayed(id);
+    else if (update.status === "COMPLETED") await notifyCompleted(id);
 
     const fresh = await loadRow(technicianId, id);
     return ok(toDetail(fresh!));
