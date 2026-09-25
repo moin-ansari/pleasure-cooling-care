@@ -10,6 +10,9 @@ export const getDataFromToken = (request : NextRequest) => {
 
         const decodedToken: any = jwt.verify(token, process.env.SECRET_TOKEN!);
 
+        // Admin tokens carry no role. A technician's token must never open admin routes.
+        if (decodedToken.role) throw new Error("Not an admin token");
+
         return decodedToken.id;
 
     } catch (error: any) {

@@ -21,6 +21,28 @@ export const STATUS_LABELS: Record<BookingStatusValue, string> = {
     CANCELLED: "Cancelled",
 };
 
+// What a technician may move a job to next. Cancelling is never in this list: only admin and customer cancel.
+export const TECHNICIAN_TRANSITIONS: Record<BookingStatusValue, BookingStatusValue[]> = {
+    NEW: [],
+    CONFIRMED: ["ARRIVING"],
+    ARRIVING: ["WORKING", "DELAYED"],
+    WORKING: ["DELAYED", "COMPLETED"],
+    DELAYED: ["WORKING", "COMPLETED"],
+    COMPLETED: [],
+    CANCELLED: [],
+};
+
+// Technician screens show DELAYED as "Pending".
+export const TECHNICIAN_STATUS_LABELS: Record<BookingStatusValue, string> = {
+    NEW: "New",
+    CONFIRMED: "Confirmed",
+    ARRIVING: "Arriving",
+    WORKING: "Working",
+    DELAYED: "Pending",
+    COMPLETED: "Completed",
+    CANCELLED: "Cancelled",
+};
+
 // A customer may cancel while the booking is strictly before the cutoff status.
 export function isCancellableByCustomer(status: BookingStatusValue, cutoff: BookingStatusValue): boolean {
     const index = ACTIVE_STATUS_ORDER.indexOf(status);

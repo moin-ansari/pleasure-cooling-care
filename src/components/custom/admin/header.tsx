@@ -52,6 +52,12 @@ const Header = () => {
           >
             Areas
           </Link>
+          <Link
+            href="/admin/technicians"
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Technicians
+          </Link>
         </nav>
       </Sheet>
       <DropdownMenu>
