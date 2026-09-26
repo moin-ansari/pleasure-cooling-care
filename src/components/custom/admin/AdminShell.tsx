@@ -121,7 +121,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </Sheet>
       </header>
 
-      <main className="mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden px-3 pb-24 pt-3 md:px-6 md:pb-10 md:pt-5">{children}</main>
+      <main className="admin-main mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden px-3 pb-24 pt-3 md:px-6 md:pb-10 md:pt-5">{children}</main>
 
       {/* Phone: the five things used all day. */}
       <nav

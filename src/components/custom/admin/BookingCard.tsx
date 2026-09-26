@@ -24,7 +24,7 @@ export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; o
             {friendlyDay(b.date)}, {b.time}
             {overdue && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Overdue</span>}
           </p>
-          <p className="truncate text-sm font-medium text-slate-900">
+          <p className="text-sm font-medium leading-tight text-slate-900">
             {b.serviceType} <span className="font-normal text-slate-500">· {CATEGORY_LABELS[b.applianceCategory]}</span>
           </p>
         </div>

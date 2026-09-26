@@ -116,3 +116,13 @@
       animation: none;
     }
   }
+@layer components {
+  /* A grid without explicit columns sizes its one column to the widest content, which pushes cards past the
+     screen edge on narrow phones. Give it a shrinkable column. Utility classes such as grid-cols-2 still win. */
+  :where(.admin-main) .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  :where(.admin-main) {
+    overflow-wrap: anywhere;
+  }
+}

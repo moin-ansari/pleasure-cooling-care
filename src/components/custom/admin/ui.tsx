@@ -57,16 +57,16 @@ export function StatTile({
 }) {
   const t = TONES[tone];
   const body = (
-    <div className={`flex h-full items-center gap-2.5 rounded-xl border p-2.5 ${t.box}`}>
+    <div className={`flex h-full items-center gap-2 rounded-xl border p-2 ${t.box}`}>
       {Icon && (
-        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${t.icon}`}>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${t.icon}`}>
           <Icon className="h-5 w-5" aria-hidden="true" />
         </span>
       )}
       <div className="min-w-0">
-        <p className="truncate text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
+        <p className="text-[11px] font-medium uppercase leading-tight tracking-wide text-slate-500">{label}</p>
         <p className="text-xl font-bold leading-6 text-slate-900">{value}</p>
-        {note && <p className="truncate text-[11px] text-slate-500">{note}</p>}
+        {note && <p className="text-[11px] leading-tight text-slate-500">{note}</p>}
       </div>
     </div>
   );
