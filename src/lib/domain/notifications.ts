@@ -248,10 +248,24 @@ export interface NotificationList {
 }
 
 // A co-admin sees only their own store's messages. The owner sees all of them, including ones not tied to a store.
-export async function listNotifications(scope: AdminScope, options: { status?: "SENT" | "FAILED" | "SKIPPED"; page?: number }): Promise<NotificationList> {
+export async function listNotifications(
+    scope: AdminScope,
+    options: { status?: "SENT" | "FAILED" | "SKIPPED"; page?: number; recipient?: NotificationItem["recipient"]; q?: string },
+): Promise<NotificationList> {
     const page = Math.max(1, options.page ?? 1);
     const base: Prisma.NotificationLogWhereInput = storeOnlyWhere(scope);
-    const where: Prisma.NotificationLogWhereInput = { ...base, ...(options.status ? { status: options.status } : {}) };
+    const filters: Prisma.NotificationLogWhereInput[] = [];
+    if (options.status) filters.push({ status: options.status });
+    if (options.recipient) {
+        filters.push({ template: { in: (Object.keys(SMS_TEMPLATES) as SmsTemplateKey[]).filter((k) => SMS_TEMPLATES[k].recipient === options.recipient) } });
+    }
+    const q = options.q?.trim();
+    if (q) {
+        // A phone number (or part of it) or a booking reference such as PCC-AB12CD.
+        const refs = await db.booking.findMany({ where: { bookingRef: { contains: q, mode: "insensitive" }, ...storeOnlyWhere(scope) }, select: { id: true }, take: 50 });
+        filters.push({ OR: [{ to: { contains: q.replace(/\D/g, "") || q } }, ...(refs.length ? [{ bookingId: { in: refs.map((r) => r.id) } }] : [])] });
+    }
+    const where: Prisma.NotificationLogWhereInput = { ...base, ...(filters.length ? { AND: filters } : {}) };
 
     const [rows, total, grouped] = await Promise.all([
         db.notificationLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
@@ -289,6 +303,41 @@ export async function listNotifications(scope: AdminScope, options: { status?: "
         pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
         smsConfigured: smsIsConfigured(),
     };
+}
+
+// Tries every failed message again, oldest first, up to a limit so one tap cannot run for long. Messages that were not sent because SMS is off are left alone.
+export async function resendAllFailed(scope: AdminScope): Promise<{ tried: number; sent: number }> {
+    const rows = await db.notificationLog.findMany({ where: { ...storeOnlyWhere(scope), status: "FAILED" }, orderBy: { createdAt: "asc" }, take: 20, select: { id: true } });
+    let sent = 0;
+    for (const row of rows) {
+        const result = await resendNotification(scope, row.id);
+        if (result.ok && result.data === "SENT") sent += 1;
+    }
+    return { tried: rows.length, sent };
+}
+
+export interface TemplateInfo {
+    key: SmsTemplateKey;
+    label: string;
+    recipient: NotificationItem["recipient"];
+    text: string;
+    vars: string[];
+    // Whether the MSG91 template id for this message is set on the server. The id itself is never shown.
+    hasTemplateId: boolean;
+    envName: string;
+}
+
+export function listTemplates(): { configured: boolean; items: TemplateInfo[] } {
+    const items = (Object.keys(SMS_TEMPLATES) as SmsTemplateKey[]).map((key) => ({
+        key,
+        label: SMS_TEMPLATES[key].label,
+        recipient: SMS_TEMPLATES[key].recipient,
+        text: SMS_TEMPLATES[key].text,
+        vars: SMS_TEMPLATES[key].vars,
+        hasTemplateId: !!process.env[`MSG91_TEMPLATE_${key}`]?.trim(),
+        envName: `MSG91_TEMPLATE_${key}`,
+    }));
+    return { configured: smsIsConfigured(), items };
 }
 
 // Tries a failed or skipped message again with the same recipient and values.
