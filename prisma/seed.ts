@@ -10,11 +10,17 @@ const WARRANTY_DAYS: Record<string, number> = {
 };
 
 async function main() {
+    // The owner's own store. Technicians pay it 20% of the service charge, all of which goes to the owner.
+    const main = await db.store.findFirst({ where: { isMain: true } });
+    const mainStore =
+        main ??
+        (await db.store.create({ data: { name: "Main store", isMain: true, technicianRatePercent: "20", ownerRatePercent: "20", flatAmount: "0" } }));
+
     for (const district of ["Bareilly", "Pilibhit"]) {
         await db.serviceArea.upsert({
             where: { state_district: { state: "Uttar Pradesh", district } },
             update: {},
-            create: { state: "Uttar Pradesh", district, isActive: true },
+            create: { state: "Uttar Pradesh", district, isActive: true, storeId: mainStore.id },
         });
     }
 

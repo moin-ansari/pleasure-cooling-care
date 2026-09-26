@@ -1,55 +1,32 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { NextRequest } from "next/server";
 import { revalidateTag } from "next/cache";
-import { db } from "@/lib/db";
-import { ServiceAreaInputSchema } from "@/schema/serviceArea";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { deleteServiceArea, updateServiceArea } from "@/lib/domain/serviceAreas";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { respond, serverError } from "@/helpers/respond";
 import { STOREFRONT_TAG } from "@/lib/storefront";
-import { logAudit } from "@/lib/audit";
 
 type Context = { params: { id: string } };
 
 export async function PUT(request: NextRequest, { params }: Context) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
-
-        const parsed = ServiceAreaInputSchema.safeParse(await request.json());
-        if (!parsed.success) return NextResponse.json({ status: "error", message: parsed.error.issues[0].message });
-
-        const before = await db.serviceArea.findUnique({ where: { id: params.id } });
-        if (!before) return NextResponse.json({ status: "error", message: "District not found" });
-
-        const area = await db.serviceArea.update({ where: { id: params.id }, data: parsed.data });
-        revalidateTag(STOREFRONT_TAG);
-        await logAudit({ actorType: "admin", actorId: adminId, action: "serviceArea.update", entity: "ServiceArea", entityId: area.id, before, after: area });
-
-        return NextResponse.json({ status: "success", message: "District updated", data: area });
-    } catch (error: any) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-            return NextResponse.json({ status: "error", message: "This district is already in the list" });
-        }
-        return NextResponse.json({ status: "error", message: error.message });
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
+        const result = await updateServiceArea(scope, params.id, await request.json());
+        if (result.ok) revalidateTag(STOREFRONT_TAG);
+        return respond(result, "District updated");
+    } catch (error) {
+        return serverError("service area update failed", error);
     }
 }
 
 export async function DELETE(request: NextRequest, { params }: Context) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
-
-        const before = await db.serviceArea.findUnique({ where: { id: params.id } });
-        if (!before) return NextResponse.json({ status: "error", message: "District not found" });
-
-        await db.serviceArea.delete({ where: { id: params.id } });
-        revalidateTag(STOREFRONT_TAG);
-        await logAudit({ actorType: "admin", actorId: adminId, action: "serviceArea.delete", entity: "ServiceArea", entityId: params.id, before });
-
-        return NextResponse.json({ status: "success", message: "District deleted" });
-    } catch (error: any) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
-            return NextResponse.json({ status: "error", message: "This district has bookings. Hide it instead of deleting." });
-        }
-        return NextResponse.json({ status: "error", message: error.message });
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
+        const result = await deleteServiceArea(scope, params.id);
+        if (result.ok) revalidateTag(STOREFRONT_TAG);
+        return respond(result, "District deleted", { withData: false });
+    } catch (error) {
+        return serverError("service area delete failed", error);
     }
 }

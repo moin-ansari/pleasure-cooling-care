@@ -6,6 +6,7 @@ import { sendSms, smsIsConfigured, type SmsResult } from "@/lib/sms/msg91";
 import { absoluteUrl } from "@/lib/site";
 import { formatIst, formatIstDay } from "@/lib/time";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { storeOnlyWhere, type AdminScope } from "@/lib/scope";
 import { fail, ok, type Result } from "./result";
 
 const PAGE_SIZE = 25;
@@ -24,9 +25,10 @@ async function loadBooking(bookingId: string): Promise<BookingForSms | null> {
     return db.booking.findUnique({ where: { id: bookingId }, include: bookingInclude });
 }
 
-export async function getAdminAlertPhone(): Promise<string | null> {
-    const settings = await db.settings.findUnique({ where: { id: 1 }, select: { adminAlertPhone: true } });
-    return settings?.adminAlertPhone || process.env.ADMIN_ALERT_PHONE?.trim() || null;
+// The number that gets a text for every new booking in this store. The owner's main store can also fall back to a server setting.
+export async function getAdminAlertPhone(storeId: string): Promise<string | null> {
+    const store = await db.store.findUnique({ where: { id: storeId }, select: { adminAlertPhone: true, isMain: true } });
+    return store?.adminAlertPhone || (store?.isMain ? process.env.ADMIN_ALERT_PHONE?.trim() : undefined) || null;
 }
 
 interface Dispatch {
@@ -46,9 +48,11 @@ async function dispatch({ template, to, vars, bookingId }: Dispatch): Promise<vo
             result = await sendSms(template, to, vars);
         }
 
+        const storeId = bookingId ? (await db.booking.findUnique({ where: { id: bookingId }, select: { storeId: true } }))?.storeId : undefined;
         await db.notificationLog.create({
             data: {
                 bookingId,
+                storeId,
                 channel: "SMS",
                 to,
                 template,
@@ -86,7 +90,7 @@ export async function notifyBookingReceived(bookingId: string): Promise<void> {
     await safely("received", async () => {
         const b = await loadBooking(bookingId);
         if (!b) return;
-        const adminPhone = await getAdminAlertPhone();
+        const adminPhone = await getAdminAlertPhone(b.storeId);
         await Promise.all([
             dispatch({ template: "BOOKING_RECEIVED", to: b.mobile, bookingId, vars: [firstName(b.customerName), b.bookingRef, b.serviceType, requestedWhen(b), trackUrl()] }),
             adminPhone
@@ -166,9 +170,10 @@ export async function notifyPriceChanged(bookingId: string, oldPrice: number): P
 export async function notifyWarrantyClaim(claimId: string): Promise<void> {
     await safely("claim", async () => {
         const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });
-        const adminPhone = await getAdminAlertPhone();
-        if (!claim || !adminPhone) return;
+        if (!claim) return;
         const b = claim.originalBooking;
+        const adminPhone = await getAdminAlertPhone(b.storeId);
+        if (!adminPhone) return;
         await dispatch({ template: "ADMIN_WARRANTY_CLAIM", to: adminPhone, bookingId: b.id, vars: [b.bookingRef, firstName(b.customerName), absoluteUrl("/admin/warranty")] });
     });
 }
@@ -224,18 +229,18 @@ export interface NotificationList {
     page: number;
     pageCount: number;
     smsConfigured: boolean;
-    adminAlertPhone: string | null;
 }
 
-export async function listNotifications(options: { status?: "SENT" | "FAILED" | "SKIPPED"; page?: number }): Promise<NotificationList> {
+// A co-admin sees only their own store's messages. The owner sees all of them, including ones not tied to a store.
+export async function listNotifications(scope: AdminScope, options: { status?: "SENT" | "FAILED" | "SKIPPED"; page?: number }): Promise<NotificationList> {
     const page = Math.max(1, options.page ?? 1);
-    const where: Prisma.NotificationLogWhereInput = options.status ? { status: options.status } : {};
+    const base: Prisma.NotificationLogWhereInput = storeOnlyWhere(scope);
+    const where: Prisma.NotificationLogWhereInput = { ...base, ...(options.status ? { status: options.status } : {}) };
 
-    const [rows, total, grouped, adminAlertPhone] = await Promise.all([
+    const [rows, total, grouped] = await Promise.all([
         db.notificationLog.findMany({ where, orderBy: { createdAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
         db.notificationLog.count({ where }),
-        db.notificationLog.groupBy({ by: ["status"], _count: { _all: true } }),
-        getAdminAlertPhone(),
+        db.notificationLog.groupBy({ by: ["status"], where: base, _count: { _all: true } }),
     ]);
 
     const ids = Array.from(new Set(rows.map((r) => r.bookingId).filter((v): v is string => !!v)));
@@ -267,13 +272,12 @@ export async function listNotifications(options: { status?: "SENT" | "FAILED" | 
         page,
         pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
         smsConfigured: smsIsConfigured(),
-        adminAlertPhone,
     };
 }
 
 // Tries a failed or skipped message again with the same recipient and values.
-export async function resendNotification(id: string): Promise<Result<NotificationItem["status"]>> {
-    const log = await db.notificationLog.findUnique({ where: { id } });
+export async function resendNotification(scope: AdminScope, id: string): Promise<Result<NotificationItem["status"]>> {
+    const log = await db.notificationLog.findFirst({ where: { id, ...storeOnlyWhere(scope) } });
     if (!log) return fail("not_found", "Message not found");
     if (log.status === "SENT") return fail("already_sent", "This message was already sent");
 
@@ -288,13 +292,4 @@ export async function resendNotification(id: string): Promise<Result<Notificatio
         data: { status: result.status, providerResponse: result.response.slice(0, 500), attempts: { increment: 1 } },
     });
     return ok(result.status);
-}
-
-export async function setAdminAlertPhone(raw: string): Promise<Result<string | null>> {
-    const phone = normalizeIndianMobile(raw);
-    if (raw.trim() !== "" && !/^[6-9]\d{9}$/.test(phone)) return fail("invalid", "Enter a valid 10 digit mobile number, or leave it empty to turn alerts off");
-
-    const value = raw.trim() === "" ? null : phone;
-    await db.settings.upsert({ where: { id: 1 }, update: { adminAlertPhone: value }, create: { id: 1, adminAlertPhone: value } });
-    return ok(value);
 }

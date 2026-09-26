@@ -1,57 +1,44 @@
 import { NextRequest, NextResponse } from "next/server";
-import { setAdminAlertPhone } from "@/lib/domain/notifications";
-import { updateCommissionSettings } from "@/lib/domain/finance";
 import { getAdminSettings, updateCancelCutoff, updateRankSettings } from "@/lib/domain/settings";
+import { getMainStoreId, updateStoreAlertPhone } from "@/lib/domain/stores";
 import { smsIsConfigured } from "@/lib/sms/msg91";
-import { logAudit } from "@/lib/audit";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { normalizeIndianMobile } from "@/lib/phone";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { respond, serverError } from "@/helpers/respond";
 
 export async function GET(request: NextRequest) {
     try {
-        if (!(await getAdminId(request))) return unauthorizedResponse();
-        return NextResponse.json({ status: "success", data: { ...(await getAdminSettings()), smsConfigured: smsIsConfigured() } });
-    } catch (error: any) {
-        console.error("settings failed", error);
-        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
+        return NextResponse.json({ status: "success", data: { ...(await getAdminSettings(scope)), smsConfigured: smsIsConfigured() } });
+    } catch (error) {
+        return serverError("settings failed", error);
     }
 }
 
-// One section is saved at a time: { section: "alert" | "commission" | "cutoff" | "ranks", ...values }
+// One section is saved at a time: { section: "alert" | "cutoff" | "ranks", ...values }
+// Commission terms and the alert numbers of other stores are managed on the Stores screen.
 export async function PUT(request: NextRequest) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
         const body = await request.json();
-        const fail = (message: string, code?: string) => NextResponse.json({ status: "error", code, message });
-
         switch (body?.section) {
             case "alert": {
-                const result = await setAdminAlertPhone(String(body?.adminAlertPhone ?? ""));
-                if (!result.ok) return fail(result.message, result.code);
-                await logAudit({ actorType: "admin", actorId: adminId, action: "settings.adminAlertPhone", entity: "Settings", entityId: "1", after: { adminAlertPhone: result.data } });
-                return NextResponse.json({ status: "success", message: result.data ? "Alert number saved" : "New booking alerts turned off" });
+                const raw = String(body?.adminAlertPhone ?? "");
+                const phone = raw.trim() === "" ? "" : normalizeIndianMobile(raw);
+                const storeId = scope.storeIds ? scope.storeIds[0] : await getMainStoreId();
+                return respond(await updateStoreAlertPhone(scope, storeId, { adminAlertPhone: phone }), (d) => (d.adminAlertPhone ? "Alert number saved" : "New booking alerts turned off"), { withData: false });
             }
-            case "commission": {
-                const result = await updateCommissionSettings(adminId, body);
-                if (!result.ok) return fail(result.message, result.code);
-                return NextResponse.json({ status: "success", message: "Commission saved. It applies to jobs completed from now on." });
-            }
-            case "cutoff": {
-                const result = await updateCancelCutoff(adminId, body);
-                if (!result.ok) return fail(result.message, result.code);
-                return NextResponse.json({ status: "success", message: "Cancellation rule saved" });
-            }
-            case "ranks": {
-                const result = await updateRankSettings(adminId, body);
-                if (!result.ok) return fail(result.message, result.code);
-                return NextResponse.json({ status: "success", message: result.data.updated ? `Ranks saved. ${result.data.updated} technician${result.data.updated === 1 ? "" : "s"} changed rank.` : "Ranks saved" });
-            }
+            case "cutoff":
+                return respond(await updateCancelCutoff(scope, body), "Cancellation rule saved", { withData: false });
+            case "ranks":
+                return respond(await updateRankSettings(scope, body), (d) => (d.updated ? `Ranks saved. ${d.updated} technician${d.updated === 1 ? "" : "s"} changed rank.` : "Ranks saved"), { withData: false });
             default:
-                return fail("Unknown settings section");
+                return NextResponse.json({ status: "error", code: "invalid", message: "Unknown settings section" }, { status: 400 });
         }
-    } catch (error: any) {
-        console.error("settings update failed", error);
-        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
+    } catch (error) {
+        return serverError("settings update failed", error);
     }
 }

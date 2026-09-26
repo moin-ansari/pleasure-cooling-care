@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, type ApplianceCategoryValue } from "@/constants/appliances";
 import type { TechnicianDetail } from "@/lib/domain/technicians";
-import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
+import { useAdmin } from "@/components/custom/admin/AdminContext";
+import type { AdminAreaItem } from "@/lib/domain/serviceAreas";
+import type { StoreItem } from "@/lib/domain/stores";
 
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
@@ -47,6 +49,7 @@ interface FormState {
   isActive: boolean;
   specializations: ApplianceCategoryValue[];
   serviceAreaIds: string[];
+  storeId: string;
 }
 
 const toState = (t?: TechnicianDetail): FormState => ({
@@ -69,6 +72,7 @@ const toState = (t?: TechnicianDetail): FormState => ({
   isActive: t?.isActive ?? true,
   specializations: t?.specializations ?? [],
   serviceAreaIds: t?.serviceAreaIds ?? [],
+  storeId: t?.storeId ?? "",
 });
 
 const toggle = <T,>(list: T[], value: T): T[] => (list.includes(value) ? list.filter((v) => v !== value) : [...list, value]);
@@ -76,7 +80,10 @@ const toggle = <T,>(list: T[], value: T): T[] => (list.includes(value) ? list.fi
 export default function TechnicianForm({ technician }: { technician?: TechnicianDetail }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(toState(technician));
-  const [areas, setAreas] = useState<ServiceAreaItem[]>([]);
+  const { me } = useAdmin();
+  const isOwner = me?.isOwner ?? false;
+  const [areas, setAreas] = useState<AdminAreaItem[]>([]);
+  const [stores, setStores] = useState<StoreItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -86,6 +93,25 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       .then((json) => json.status === "success" && setAreas(json.data))
       .catch(() => toast.error("Could not load districts"));
   }, []);
+
+  // Only the owner chooses the store. A new technician starts in the owner's own store.
+  useEffect(() => {
+    if (!isOwner) return;
+    fetch("/api/admin/stores")
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.status !== "success") return;
+        const active: StoreItem[] = json.data.filter((s: StoreItem) => s.isActive);
+        setStores(active);
+        setForm((f) => (f.storeId ? f : { ...f, storeId: active.find((s) => s.isMain)?.id ?? active[0]?.id ?? "" }));
+      })
+      .catch(() => undefined);
+  }, [isOwner]);
+
+  // A technician works only in the cities of their own store.
+  const storeAreas = isOwner && form.storeId ? areas.filter((a) => a.storeId === form.storeId) : areas;
+  const changeStore = (id: string) =>
+    setForm((f) => ({ ...f, storeId: id, serviceAreaIds: f.serviceAreaIds.filter((areaId) => areas.some((a) => a.id === areaId && a.storeId === id)) }));
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
   const bind = (key: keyof FormState) => ({
@@ -122,6 +148,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
         idNumber: form.idNumber,
         specializations: form.specializations,
         serviceAreaIds: form.serviceAreaIds,
+        ...(isOwner && form.storeId ? { storeId: form.storeId } : {}),
         isActive: form.isActive,
         ...(technician ? { newPin: form.pin, unlock: form.unlock } : { pin: form.pin }),
       };
@@ -261,10 +288,24 @@ export default function TechnicianForm({ technician }: { technician?: Technician
             </div>
           </fieldset>
 
+          {isOwner && stores.length > 1 && (
+            <Field id="t-store" label="Store" hint="Which store this technician belongs to. They pay this store, and work only in its cities.">
+              <select id="t-store" value={form.storeId} onChange={(e) => changeStore(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                {stores.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                    {s.isMain ? " (yours)" : ""}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+
           <fieldset>
             <legend className="text-sm font-medium mb-2">Districts they work in</legend>
+            {storeAreas.length === 0 && <p className="text-xs text-muted-foreground">This store has no cities yet.</p>}
             <div className="flex flex-wrap gap-4">
-              {areas.map((a) => (
+              {storeAreas.map((a) => (
                 <label key={a.id} className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"

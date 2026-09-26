@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listWarrantyClaims, type ClaimStatusValue } from "@/lib/domain/warranty";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 
 const STATUSES: ClaimStatusValue[] = ["PENDING", "APPROVED", "REJECTED"];
 
 export async function GET(request: NextRequest) {
     try {
-        if (!(await getAdminId(request))) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
         const status = request.nextUrl.searchParams.get("status") as ClaimStatusValue | null;
-        const data = await listWarrantyClaims(status && STATUSES.includes(status) ? status : undefined);
+        const data = await listWarrantyClaims(scope, status && STATUSES.includes(status) ? status : undefined);
         return NextResponse.json({ status: "success", data });
     } catch (error: any) {
         console.error("claims list failed", error);

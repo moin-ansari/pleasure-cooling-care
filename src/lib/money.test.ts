@@ -34,3 +34,38 @@ describe("round2", () => {
         expect(round2(0.1 + 0.2)).toBe(0.3);
     });
 });
+
+import { splitCommission } from "./money";
+
+describe("splitCommission", () => {
+    const store = { ratePercent: 20, ownerRatePercent: 10, flatAmount: 0 };
+
+    it("gives the owner 10 points of the 20% and lets the store keep the rest", () => {
+        expect(splitCommission(1000, store)).toEqual({ technicianOwes: 200, ownerShare: 100, storeKeeps: 100 });
+    });
+
+    it("sends the flat amount to the owner only", () => {
+        expect(splitCommission(1000, { ...store, flatAmount: 50 })).toEqual({ technicianOwes: 250, ownerShare: 150, storeKeeps: 100 });
+    });
+
+    it("gives the owner everything in the main store", () => {
+        expect(splitCommission(1000, { ratePercent: 20, ownerRatePercent: 20, flatAmount: 0 })).toEqual({ technicianOwes: 200, ownerShare: 200, storeKeeps: 0 });
+    });
+
+    it("stays exact on awkward amounts", () => {
+        const r = splitCommission(299, store);
+        expect(r).toEqual({ technicianOwes: 59.8, ownerShare: 29.9, storeKeeps: 29.9 });
+        expect(r.ownerShare + r.storeKeeps).toBeCloseTo(r.technicianOwes, 10);
+    });
+
+    it("charges only the flat amount on a free job, and nothing when there is none", () => {
+        expect(splitCommission(0, { ...store, flatAmount: 30 })).toEqual({ technicianOwes: 30, ownerShare: 30, storeKeeps: 0 });
+        expect(splitCommission(0, store)).toEqual({ technicianOwes: 0, ownerShare: 0, storeKeeps: 0 });
+    });
+
+    it("never gives the owner more than the technician pays", () => {
+        const r = splitCommission(1000, { ratePercent: 5, ownerRatePercent: 10, flatAmount: 0 });
+        expect(r.ownerShare).toBeLessThanOrEqual(r.technicianOwes);
+        expect(r.storeKeeps).toBe(0);
+    });
+});

@@ -2,45 +2,23 @@ import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
 import { istDateString, istDateToUtc } from "@/lib/time";
-import { computeCommission, round2, type CommissionTerms } from "@/lib/money";
+import { round2, splitCommission, type CommissionTerms } from "@/lib/money";
 import { monthRange, type DateRange } from "@/lib/dateRange";
-import { AmountsCorrectionSchema, CommissionSettingsSchema, ExpenseInputSchema, SettlementInputSchema } from "@/schema/finance";
+import { bookingWhere, canAccessStore, isOwner, storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
+import { AmountsCorrectionSchema, ExpenseInputSchema, SettlementInputSchema } from "@/schema/finance";
+import { StorePaymentSchema } from "@/schema/stores";
+import { getStoreTerms } from "./stores";
 import { fail, ok, type Result } from "./result";
 
 const num = (d: Prisma.Decimal | null | undefined): number => (d ? Number(d) : 0);
 const between = (range: DateRange) => (range.start && range.end ? { gte: range.start, lt: range.end } : undefined);
-
-// ---------- commission terms ----------
-
-export async function getCommissionSettings(): Promise<CommissionTerms> {
-    const s = await db.settings.findUnique({ where: { id: 1 }, select: { commissionRatePercent: true, commissionFlatAmount: true } });
-    return { ratePercent: s ? num(s.commissionRatePercent) : 15, flatAmount: s ? num(s.commissionFlatAmount) : 0 };
-}
-
-export async function updateCommissionSettings(adminId: string, raw: unknown): Promise<Result<CommissionTerms>> {
-    const parsed = CommissionSettingsSchema.safeParse(raw);
-    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
-
-    const before = await getCommissionSettings();
-    const data = { commissionRatePercent: parsed.data.commissionRatePercent.toFixed(2), commissionFlatAmount: parsed.data.commissionFlatAmount.toFixed(2) };
-    await db.settings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
-
-    const after = { ratePercent: parsed.data.commissionRatePercent, flatAmount: parsed.data.commissionFlatAmount };
-    await logAudit({ actorType: "admin", actorId: adminId, action: "settings.commission", entity: "Settings", entityId: "1", before, after });
-    return ok(after);
-}
-
-// What to charge on a job that is being completed. A free warranty re-service earns the business nothing.
-export async function commissionTermsFor(isWarrantyRedo: boolean): Promise<CommissionTerms> {
-    return isWarrantyRedo ? { ratePercent: 0, flatAmount: 0 } : getCommissionSettings();
-}
 
 export function commissionNote(laborAmount: number, terms: CommissionTerms): string {
     const flat = terms.flatAmount > 0 ? ` + ₹${terms.flatAmount} flat` : "";
     return `${terms.ratePercent}% of ₹${laborAmount}${flat}`;
 }
 
-// ---------- ledger ----------
+// ---------- technician ledger (what a technician owes their store) ----------
 
 export interface LedgerItem {
     id: string;
@@ -67,8 +45,8 @@ export async function getTechnicianBalance(technicianId: string): Promise<number
     return round2(num(sum._sum.amount));
 }
 
-export async function getTechnicianLedger(technicianId: string, page = 1): Promise<TechnicianLedger | null> {
-    const technician = await db.technician.findUnique({ where: { id: technicianId }, select: { id: true, name: true, phone: true } });
+export async function getTechnicianLedger(scope: AdminScope, technicianId: string, page = 1): Promise<TechnicianLedger | null> {
+    const technician = await db.technician.findFirst({ where: { id: technicianId, ...storeOnlyWhere(scope) }, select: { id: true, name: true, phone: true } });
     if (!technician) return null;
 
     const safePage = Math.max(1, page);
@@ -100,7 +78,7 @@ export async function getTechnicianLedger(technicianId: string, page = 1): Promi
 }
 
 // An office payment or a deduction from a payout reduces what the technician owes. An adjustment can go either way.
-export async function recordLedgerEntry(technicianId: string, adminId: string, raw: unknown): Promise<Result<{ balance: number }>> {
+export async function recordLedgerEntry(scope: AdminScope, technicianId: string, raw: unknown): Promise<Result<{ balance: number }>> {
     const parsed = SettlementInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
     const { kind, amount, note } = parsed.data;
@@ -108,39 +86,99 @@ export async function recordLedgerEntry(technicianId: string, adminId: string, r
     if (kind !== "ADJUSTMENT" && amount < 0) return fail("invalid", "Enter the amount as a positive number");
     if (kind === "ADJUSTMENT" && !note) return fail("invalid", "Tell us why you are adjusting the balance");
 
-    const technician = await db.technician.findUnique({ where: { id: technicianId }, select: { id: true } });
+    const technician = await db.technician.findFirst({ where: { id: technicianId, ...storeOnlyWhere(scope) }, select: { id: true, storeId: true } });
     if (!technician) return fail("not_found", "Technician not found");
 
     const signed = kind === "ADJUSTMENT" ? amount : -amount;
     const entry = await db.ledgerEntry.create({
-        data: { technicianId, type: kind, amount: signed.toFixed(2), note: note || null },
+        data: { technicianId, storeId: technician.storeId, type: kind, amount: signed.toFixed(2), note: note || null },
     });
-    await logAudit({ actorType: "admin", actorId: adminId, action: `ledger.${kind.toLowerCase()}`, entity: "LedgerEntry", entityId: entry.id, after: { technicianId, amount: signed, note: note ?? null } });
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: `ledger.${kind.toLowerCase()}`, entity: "LedgerEntry", entityId: entry.id, after: { technicianId, amount: signed, note: note ?? null } });
 
     return ok({ balance: await getTechnicianBalance(technicianId) });
 }
 
+// ---------- store ledger (what a store owes the owner) ----------
+
+export interface StoreLedger {
+    store: { id: string; name: string; isMain: boolean };
+    balance: number;
+    items: { id: string; createdAt: string; type: "OWNER_SHARE_OWED" | "STORE_PAYMENT" | "ADJUSTMENT"; amount: number; note: string | null; bookingId: string | null; bookingRef: string | null }[];
+    page: number;
+    pageCount: number;
+}
+
+export async function getStoreLedger(scope: AdminScope, storeId: string, page = 1): Promise<StoreLedger | null> {
+    if (!canAccessStore(scope, storeId)) return null;
+    const store = await db.store.findUnique({ where: { id: storeId }, select: { id: true, name: true, isMain: true } });
+    if (!store) return null;
+
+    const safePage = Math.max(1, page);
+    const [rows, total, sum] = await Promise.all([
+        db.storeLedgerEntry.findMany({ where: { storeId }, orderBy: { createdAt: "desc" }, skip: (safePage - 1) * LEDGER_PAGE, take: LEDGER_PAGE }),
+        db.storeLedgerEntry.count({ where: { storeId } }),
+        db.storeLedgerEntry.aggregate({ _sum: { amount: true }, where: { storeId } }),
+    ]);
+    const ids = Array.from(new Set(rows.map((r) => r.bookingId).filter((v): v is string => !!v)));
+    const bookings = ids.length ? await db.booking.findMany({ where: { id: { in: ids } }, select: { id: true, bookingRef: true } }) : [];
+    const refOf = new Map(bookings.map((b) => [b.id, b.bookingRef]));
+
+    return {
+        store,
+        balance: round2(num(sum._sum.amount)),
+        items: rows.map((r) => ({ id: r.id, createdAt: r.createdAt.toISOString(), type: r.type, amount: num(r.amount), note: r.note, bookingId: r.bookingId, bookingRef: r.bookingId ? refOf.get(r.bookingId) ?? null : null })),
+        page: safePage,
+        pageCount: Math.max(1, Math.ceil(total / LEDGER_PAGE)),
+    };
+}
+
+// Only the owner records what a store has paid them.
+export async function recordStorePayment(scope: AdminScope, storeId: string, raw: unknown): Promise<Result<{ balance: number }>> {
+    if (!isOwner(scope)) return fail("forbidden", "Only the owner can do this");
+    const parsed = StorePaymentSchema.safeParse(raw);
+    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
+    const { kind, amount, note } = parsed.data;
+
+    if (kind === "PAYMENT" && amount < 0) return fail("invalid", "Enter the amount as a positive number");
+    if (kind === "ADJUSTMENT" && !note) return fail("invalid", "Tell us why you are adjusting the balance");
+
+    const store = await db.store.findUnique({ where: { id: storeId }, select: { id: true, isMain: true } });
+    if (!store) return fail("not_found", "Store not found");
+    if (store.isMain) return fail("invalid", "Your own store has no balance with you");
+
+    const signed = kind === "PAYMENT" ? -amount : amount;
+    const entry = await db.storeLedgerEntry.create({ data: { storeId, type: kind === "PAYMENT" ? "STORE_PAYMENT" : "ADJUSTMENT", amount: signed.toFixed(2), note: note || null } });
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: `storeLedger.${kind.toLowerCase()}`, entity: "StoreLedgerEntry", entityId: entry.id, after: { storeId, amount: signed, note: note ?? null } });
+
+    const sum = await db.storeLedgerEntry.aggregate({ _sum: { amount: true }, where: { storeId } });
+    return ok({ balance: round2(num(sum._sum.amount)) });
+}
+
 // ---------- correcting a completed job ----------
 
-export async function correctCompletedAmounts(bookingId: string, adminId: string, raw: unknown): Promise<Result<{ commissionChange: number }>> {
+export async function correctCompletedAmounts(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<{ commissionChange: number }>> {
     const parsed = AmountsCorrectionSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
     const { laborAmount, partsAmount, amountCollected, note } = parsed.data;
 
-    const booking = await db.booking.findUnique({ where: { id: bookingId } });
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) } });
     if (!booking) return fail("not_found", "Booking not found");
     if (booking.status !== "COMPLETED") return fail("not_completed", "Only completed bookings have amounts to correct");
 
     // Same terms as when the job was completed, so a later rate change does not rewrite old jobs.
-    const terms: CommissionTerms =
-        booking.commissionRateApplied !== null
-            ? { ratePercent: num(booking.commissionRateApplied), flatAmount: num(booking.commissionFlatApplied) }
-            : await commissionTermsFor(!!booking.warrantyClaimOfId);
-    const newCommission = computeCommission(laborAmount, terms);
+    const current = await getStoreTerms(booking.storeId, !!booking.warrantyClaimOfId);
+    const rate = booking.commissionRateApplied !== null ? num(booking.commissionRateApplied) : current.ratePercent;
+    const terms = {
+        ratePercent: rate,
+        flatAmount: booking.commissionFlatApplied !== null ? num(booking.commissionFlatApplied) : current.flatAmount,
+        // Jobs completed before stores existed passed the whole percentage to the owner.
+        ownerRatePercent: booking.ownerRateApplied !== null ? num(booking.ownerRateApplied) : rate,
+    };
+    const split = splitCommission(laborAmount, terms);
 
     const change = await db.$transaction(async (tx) => {
         const posted = await tx.ledgerEntry.aggregate({ _sum: { amount: true }, where: { bookingId, type: { in: ["COMMISSION_OWED", "ADJUSTMENT"] } } });
-        const difference = round2(newCommission - num(posted._sum.amount));
+        const difference = round2(split.technicianOwes - num(posted._sum.amount));
 
         await tx.booking.update({
             where: { id: bookingId },
@@ -150,26 +188,33 @@ export async function correctCompletedAmounts(bookingId: string, adminId: string
                 amountCollected,
                 commissionRateApplied: terms.ratePercent.toFixed(2),
                 commissionFlatApplied: terms.flatAmount.toFixed(2),
+                ownerRateApplied: terms.ownerRatePercent.toFixed(2),
             },
         });
         if (difference !== 0 && booking.technicianId) {
             await tx.ledgerEntry.create({
-                data: {
-                    technicianId: booking.technicianId,
-                    bookingId,
-                    type: "ADJUSTMENT",
-                    amount: difference.toFixed(2),
-                    note: `Amounts corrected on ${booking.bookingRef}: ${note}`,
-                },
+                data: { technicianId: booking.technicianId, storeId: booking.storeId, bookingId, type: "ADJUSTMENT", amount: difference.toFixed(2), note: `Amounts corrected on ${booking.bookingRef}: ${note}` },
             });
         }
+
+        // The owner's share follows the same correction, for a co-admin's store.
+        if (!current.isMain) {
+            const ownerPosted = await tx.storeLedgerEntry.aggregate({ _sum: { amount: true }, where: { bookingId, type: { in: ["OWNER_SHARE_OWED", "ADJUSTMENT"] } } });
+            const ownerDifference = round2(split.ownerShare - num(ownerPosted._sum.amount));
+            if (ownerDifference !== 0) {
+                await tx.storeLedgerEntry.create({
+                    data: { storeId: booking.storeId, bookingId, type: "ADJUSTMENT", amount: ownerDifference.toFixed(2), note: `Amounts corrected on ${booking.bookingRef}: ${note}` },
+                });
+            }
+        }
+
         await tx.bookingStatusHistory.create({
             data: {
                 bookingId,
                 fromStatus: "COMPLETED",
                 toStatus: "COMPLETED",
                 changedByType: "admin",
-                changedById: adminId,
+                changedById: scope.adminId,
                 note: `Amounts corrected (service ₹${booking.laborAmount} to ₹${laborAmount}, parts ₹${booking.partsAmount} to ₹${partsAmount}, collected ₹${booking.amountCollected ?? 0} to ₹${amountCollected}): ${note}`,
             },
         });
@@ -178,7 +223,7 @@ export async function correctCompletedAmounts(bookingId: string, adminId: string
 
     await logAudit({
         actorType: "admin",
-        actorId: adminId,
+        actorId: scope.adminId,
         action: "booking.correctAmounts",
         entity: "Booking",
         entityId: bookingId,
@@ -190,6 +235,7 @@ export async function correctCompletedAmounts(bookingId: string, adminId: string
 }
 
 // ---------- expenses ----------
+// The owner's own costs (ads, salaries, store management) have no store. A co-admin's costs belong to their store.
 
 export interface ExpenseItem {
     id: string;
@@ -202,6 +248,7 @@ export interface ExpenseItem {
     technicianName: string | null;
     bookingId: string | null;
     bookingRef: string | null;
+    storeName: string | null;
 }
 
 export interface ExpenseList {
@@ -213,8 +260,13 @@ export interface ExpenseList {
 
 const EXPENSE_PAGE = 25;
 
-export async function listExpenses(range: DateRange, page = 1): Promise<ExpenseList> {
-    const where: Prisma.ExpenseWhereInput = { date: between(range) };
+// A co-admin sees their store's costs. The owner sees all of them.
+const expenseScope = (scope: AdminScope): Prisma.ExpenseWhereInput => (scope.storeIds ? { storeId: { in: scope.storeIds } } : {});
+// Whose costs count against this admin's profit: the owner's business-wide costs, or the co-admin's store costs.
+const ownCosts = (scope: AdminScope): Prisma.ExpenseWhereInput => (scope.storeIds ? { storeId: { in: scope.storeIds } } : { storeId: null });
+
+export async function listExpenses(scope: AdminScope, range: DateRange, page = 1): Promise<ExpenseList> {
+    const where: Prisma.ExpenseWhereInput = { ...expenseScope(scope), date: between(range) };
     const safePage = Math.max(1, page);
 
     const [rows, total, grouped] = await Promise.all([
@@ -223,10 +275,10 @@ export async function listExpenses(range: DateRange, page = 1): Promise<ExpenseL
             orderBy: [{ date: "desc" }, { createdAt: "desc" }],
             skip: (safePage - 1) * EXPENSE_PAGE,
             take: EXPENSE_PAGE,
-            include: { technician: { select: { name: true } }, booking: { select: { bookingRef: true } } },
+            include: { technician: { select: { name: true } }, booking: { select: { bookingRef: true } }, store: { select: { name: true } } },
         }),
         db.expense.count({ where }),
-        db.expense.groupBy({ by: ["type"], where, _sum: { amount: true } }),
+        db.expense.groupBy({ by: ["type"], where: { ...ownCosts(scope), date: between(range) }, _sum: { amount: true } }),
     ]);
     const sumOf = (type: string) => round2(num(grouped.find((g) => g.type === type)?._sum.amount));
 
@@ -242,6 +294,7 @@ export async function listExpenses(range: DateRange, page = 1): Promise<ExpenseL
             technicianName: r.technician?.name ?? null,
             bookingId: r.bookingId,
             bookingRef: r.booking?.bookingRef ?? null,
+            storeName: r.store?.name ?? null,
         })),
         totals: { expense: sumOf("EXPENSE"), adSpend: sumOf("AD_SPEND") },
         page: safePage,
@@ -249,19 +302,19 @@ export async function listExpenses(range: DateRange, page = 1): Promise<ExpenseL
     };
 }
 
-async function expenseData(raw: unknown): Promise<Result<Prisma.ExpenseUncheckedCreateInput>> {
+async function expenseData(scope: AdminScope, raw: unknown): Promise<Result<Prisma.ExpenseUncheckedCreateInput>> {
     const parsed = ExpenseInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
     const input = parsed.data;
 
     let bookingId: string | null = null;
     if (input.bookingRef) {
-        const booking = await db.booking.findUnique({ where: { bookingRef: input.bookingRef.toUpperCase() }, select: { id: true } });
+        const booking = await db.booking.findFirst({ where: { bookingRef: input.bookingRef.toUpperCase(), ...storeOnlyWhere(scope) }, select: { id: true } });
         if (!booking) return fail("invalid", `No booking with reference ${input.bookingRef}`);
         bookingId = booking.id;
     }
     if (input.technicianId) {
-        const technician = await db.technician.findUnique({ where: { id: input.technicianId }, select: { id: true } });
+        const technician = await db.technician.findFirst({ where: { id: input.technicianId, ...storeOnlyWhere(scope) }, select: { id: true } });
         if (!technician) return fail("invalid", "That technician was not found");
     }
 
@@ -273,26 +326,28 @@ async function expenseData(raw: unknown): Promise<Result<Prisma.ExpenseUnchecked
         type: input.type,
         technicianId: input.technicianId || null,
         bookingId,
+        storeId: scope.storeIds ? scope.storeIds[0] : null,
     });
 }
 
-export async function createExpense(adminId: string, raw: unknown): Promise<Result<{ id: string }>> {
-    const data = await expenseData(raw);
+export async function createExpense(scope: AdminScope, raw: unknown): Promise<Result<{ id: string }>> {
+    const data = await expenseData(scope, raw);
     if (!data.ok) return data;
     const expense = await db.expense.create({ data: data.data });
-    await logAudit({ actorType: "admin", actorId: adminId, action: "expense.create", entity: "Expense", entityId: expense.id, after: { type: expense.type, category: expense.category, amount: num(expense.amount) } });
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: "expense.create", entity: "Expense", entityId: expense.id, after: { type: expense.type, category: expense.category, amount: num(expense.amount) } });
     return ok({ id: expense.id });
 }
 
-export async function updateExpense(id: string, adminId: string, raw: unknown): Promise<Result<{ id: string }>> {
-    const before = await db.expense.findUnique({ where: { id } });
+export async function updateExpense(scope: AdminScope, id: string, raw: unknown): Promise<Result<{ id: string }>> {
+    const before = await db.expense.findFirst({ where: { id, ...expenseScope(scope) } });
     if (!before) return fail("not_found", "Expense not found");
-    const data = await expenseData(raw);
+    const data = await expenseData(scope, raw);
     if (!data.ok) return data;
-    await db.expense.update({ where: { id }, data: data.data });
+    // An expense stays with the store it was created for.
+    await db.expense.update({ where: { id }, data: { ...data.data, storeId: before.storeId } });
     await logAudit({
         actorType: "admin",
-        actorId: adminId,
+        actorId: scope.adminId,
         action: "expense.update",
         entity: "Expense",
         entityId: id,
@@ -302,11 +357,11 @@ export async function updateExpense(id: string, adminId: string, raw: unknown): 
     return ok({ id });
 }
 
-export async function deleteExpense(id: string, adminId: string): Promise<Result<null>> {
-    const before = await db.expense.findUnique({ where: { id } });
+export async function deleteExpense(scope: AdminScope, id: string): Promise<Result<null>> {
+    const before = await db.expense.findFirst({ where: { id, ...expenseScope(scope) } });
     if (!before) return fail("not_found", "Expense not found");
     await db.expense.delete({ where: { id } });
-    await logAudit({ actorType: "admin", actorId: adminId, action: "expense.delete", entity: "Expense", entityId: id, before: { type: before.type, category: before.category, amount: num(before.amount) } });
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: "expense.delete", entity: "Expense", entityId: id, before: { type: before.type, category: before.category, amount: num(before.amount) } });
     return ok(null);
 }
 
@@ -322,38 +377,89 @@ export interface TechnicianFinanceRow {
     balance: number;
 }
 
+export interface StoreFinanceRow {
+    storeId: string;
+    name: string;
+    isMain: boolean;
+    jobs: number;
+    // What the technicians owed the store for jobs in this period.
+    commission: number;
+    // The owner's part of it (for the owner's own store, all of it).
+    ownerShare: number;
+    storeKeeps: number;
+    // What the store owes the owner right now.
+    owesOwner: number;
+}
+
 export interface FinanceSummary {
+    viewer: "OWNER" | "CO_ADMIN";
     sales: { jobs: number; collected: number; labor: number; parts: number };
+    // What technicians owed their stores, before any split.
     commissionEarned: number;
+    // What this admin actually earns: the owner's shares, or a co-admin's own part.
+    income: number;
     expenses: number;
     adSpend: number;
     profit: number;
     outstandingCommission: number;
+    // For the owner: what co-admin stores owe them. For a co-admin: what their store owes the owner.
+    owedToOwner: number;
     ads: { bookingsFromAds: number; totalBookings: number; costPerAdBooking: number | null };
     technicians: TechnicianFinanceRow[];
+    stores: StoreFinanceRow[];
 }
 
-export async function getFinanceSummary(range: DateRange): Promise<FinanceSummary> {
+export async function getFinanceSummary(scope: AdminScope, range: DateRange): Promise<FinanceSummary> {
     const completedAt = between(range);
     const createdAt = between(range);
+    const bWhere = bookingWhere(scope);
+    const tWhere = technicianWhere(scope);
 
-    const [sales, commission, expenseGroups, adBookings, allBookings, outstanding, perTechnician, ledgerByTechnician, balances, technicians] = await Promise.all([
-        db.booking.aggregate({ _sum: { amountCollected: true, laborAmount: true, partsAmount: true }, _count: { _all: true }, where: { status: "COMPLETED", completedAt } }),
-        db.ledgerEntry.aggregate({ _sum: { amount: true }, where: { type: { in: ["COMMISSION_OWED", "ADJUSTMENT"] }, createdAt } }),
-        db.expense.groupBy({ by: ["type"], where: { date: between(range) }, _sum: { amount: true } }),
-        db.booking.count({ where: { utmSource: { not: null }, createdAt } }),
-        db.booking.count({ where: { createdAt } }),
-        db.ledgerEntry.aggregate({ _sum: { amount: true } }),
-        db.booking.groupBy({ by: ["technicianId"], where: { status: "COMPLETED", technicianId: { not: null }, completedAt }, _sum: { amountCollected: true, laborAmount: true }, _count: { _all: true } }),
-        db.ledgerEntry.groupBy({ by: ["technicianId"], where: { type: { in: ["COMMISSION_OWED", "ADJUSTMENT"] }, createdAt }, _sum: { amount: true } }),
-        db.ledgerEntry.groupBy({ by: ["technicianId"], _sum: { amount: true } }),
-        db.technician.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // A city picked in the switcher limits money entries to that city's bookings.
+    let cityBookingIds: string[] | null = null;
+    if (scope.cityId) {
+        cityBookingIds = (await db.booking.findMany({ where: { serviceAreaId: scope.cityId, ...(scope.storeIds ? { storeId: { in: scope.storeIds } } : {}) }, select: { id: true } })).map((b) => b.id);
+    }
+    const ledgerWhere: Prisma.LedgerEntryWhereInput = { ...storeOnlyWhere(scope), ...(cityBookingIds ? { bookingId: { in: cityBookingIds } } : {}) };
+    const storeLedgerWhere: Prisma.StoreLedgerEntryWhereInput = { ...storeOnlyWhere(scope), ...(cityBookingIds ? { bookingId: { in: cityBookingIds } } : {}) };
+    const commissionTypes = { in: ["COMMISSION_OWED", "ADJUSTMENT"] as ("COMMISSION_OWED" | "ADJUSTMENT")[] };
+
+    const [sales, commissionByStore, ownerShareByStore, expenseGroups, adBookings, allBookings, outstanding, perTechnician, ledgerByTechnician, balances, technicians, stores, storeBalances, jobsByStore] = await Promise.all([
+        db.booking.aggregate({ _sum: { amountCollected: true, laborAmount: true, partsAmount: true }, _count: { _all: true }, where: { ...bWhere, status: "COMPLETED", completedAt } }),
+        db.ledgerEntry.groupBy({ by: ["storeId"], where: { ...ledgerWhere, type: commissionTypes, createdAt }, _sum: { amount: true } }),
+        db.storeLedgerEntry.groupBy({ by: ["storeId"], where: { ...storeLedgerWhere, type: { in: ["OWNER_SHARE_OWED", "ADJUSTMENT"] }, createdAt }, _sum: { amount: true } }),
+        db.expense.groupBy({ by: ["type"], where: { ...(scope.storeIds ? { storeId: { in: scope.storeIds } } : { storeId: null }), date: between(range) }, _sum: { amount: true } }),
+        db.booking.count({ where: { ...bWhere, utmSource: { not: null }, createdAt } }),
+        db.booking.count({ where: { ...bWhere, createdAt } }),
+        db.ledgerEntry.aggregate({ _sum: { amount: true }, where: ledgerWhere }),
+        db.booking.groupBy({ by: ["technicianId"], where: { ...bWhere, status: "COMPLETED", technicianId: { not: null }, completedAt }, _sum: { amountCollected: true, laborAmount: true }, _count: { _all: true } }),
+        db.ledgerEntry.groupBy({ by: ["technicianId"], where: { ...ledgerWhere, type: commissionTypes, createdAt }, _sum: { amount: true } }),
+        db.ledgerEntry.groupBy({ by: ["technicianId"], where: ledgerWhere, _sum: { amount: true } }),
+        db.technician.findMany({ where: tWhere, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        db.store.findMany({ where: scope.storeIds ? { id: { in: scope.storeIds } } : {}, select: { id: true, name: true, isMain: true }, orderBy: [{ isMain: "desc" }, { name: "asc" }] }),
+        db.storeLedgerEntry.groupBy({ by: ["storeId"], where: storeOnlyWhere(scope), _sum: { amount: true } }),
+        db.booking.groupBy({ by: ["storeId"], where: { ...bWhere, status: "COMPLETED", completedAt }, _count: { _all: true } }),
     ]);
 
     const spend = (type: string) => round2(num(expenseGroups.find((g) => g.type === type)?._sum.amount));
     const expenses = spend("EXPENSE");
     const adSpend = spend("AD_SPEND");
-    const commissionEarned = round2(num(commission._sum.amount));
+
+    const commissionOf = new Map(commissionByStore.map((r) => [r.storeId, num(r._sum.amount)]));
+    const ownerShareOf = new Map(ownerShareByStore.map((r) => [r.storeId, num(r._sum.amount)]));
+    const owesOf = new Map(storeBalances.map((r) => [r.storeId, num(r._sum.amount)]));
+    const jobsOf = new Map(jobsByStore.map((r) => [r.storeId, r._count._all]));
+
+    const storeRows: StoreFinanceRow[] = stores.map((s) => {
+        const commission = round2(commissionOf.get(s.id) ?? 0);
+        // In the owner's own store the owner receives the whole commission. Elsewhere it is the store ledger's share.
+        const ownerShare = s.isMain ? commission : round2(ownerShareOf.get(s.id) ?? 0);
+        return { storeId: s.id, name: s.name, isMain: s.isMain, jobs: jobsOf.get(s.id) ?? 0, commission, ownerShare, storeKeeps: round2(commission - ownerShare), owesOwner: s.isMain ? 0 : round2(owesOf.get(s.id) ?? 0) };
+    });
+
+    const commissionEarned = round2(storeRows.reduce((n, r) => n + r.commission, 0));
+    const income = round2(storeRows.reduce((n, r) => n + (isOwner(scope) ? r.ownerShare : r.storeKeeps), 0));
+    const owedToOwner = round2(storeRows.reduce((n, r) => n + r.owesOwner, 0));
 
     const jobsBy = new Map(perTechnician.map((r) => [r.technicianId, r]));
     const commissionBy = new Map(ledgerByTechnician.map((r) => [r.technicianId, num(r._sum.amount)]));
@@ -372,14 +478,18 @@ export async function getFinanceSummary(range: DateRange): Promise<FinanceSummar
         .filter((r) => r.jobs > 0 || r.balance !== 0 || r.commission !== 0);
 
     return {
+        viewer: scope.role,
         sales: { jobs: sales._count._all, collected: sales._sum.amountCollected ?? 0, labor: sales._sum.laborAmount ?? 0, parts: sales._sum.partsAmount ?? 0 },
         commissionEarned,
+        income,
         expenses,
         adSpend,
-        profit: round2(commissionEarned - expenses - adSpend),
+        profit: round2(income - expenses - adSpend),
         outstandingCommission: round2(num(outstanding._sum.amount)),
+        owedToOwner,
         ads: { bookingsFromAds: adBookings, totalBookings: allBookings, costPerAdBooking: adBookings > 0 && adSpend > 0 ? round2(adSpend / adBookings) : null },
         technicians: rows,
+        stores: storeRows,
     };
 }
 

@@ -11,6 +11,7 @@ import {
 } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { AssignInputSchema, CancelInputSchema, PriceInputSchema } from "@/schema/adminBooking";
+import { bookingWhere, canAccessStore, storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
 import { notifyAssigned, notifyCancelled, notifyPriceChanged } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
@@ -33,6 +34,7 @@ export interface AdminBookingListItem {
     technicianName: string | null;
     createdAt: string;
     isStale: boolean;
+    storeName: string;
 }
 
 export interface AdminBookingList {
@@ -46,6 +48,7 @@ export interface AdminBookingList {
 const listInclude = {
     serviceArea: { select: { district: true } },
     technician: { select: { name: true } },
+    store: { select: { name: true } },
 } as const;
 
 function toListItem(b: Prisma.BookingGetPayload<{ include: typeof listInclude }>): AdminBookingListItem {
@@ -67,10 +70,11 @@ function toListItem(b: Prisma.BookingGetPayload<{ include: typeof listInclude }>
         technicianName: b.technician?.name ?? null,
         createdAt: b.createdAt.toISOString(),
         isStale: b.status === "NEW" && waitedMinutes >= UNASSIGNED_ALERT_MINUTES,
+        storeName: b.store.name,
     };
 }
 
-export async function listBookings(options: { group?: BookingGroup; q?: string; page?: number }): Promise<AdminBookingList> {
+export async function listBookings(scope: AdminScope, options: { group?: BookingGroup; q?: string; page?: number }): Promise<AdminBookingList> {
     const group = options.group ?? "new";
     const page = Math.max(1, options.page ?? 1);
     const q = (options.q ?? "").trim();
@@ -86,7 +90,7 @@ export async function listBookings(options: { group?: BookingGroup; q?: string; 
           }
         : {};
     const where: Prisma.BookingWhereInput = {
-        AND: [group === "all" ? {} : { status: { in: BOOKING_GROUP_STATUSES[group] } }, search],
+        AND: [bookingWhere(scope), group === "all" ? {} : { status: { in: BOOKING_GROUP_STATUSES[group] } }, search],
     };
 
     const orderBy: Prisma.BookingOrderByWithRelationInput[] =
@@ -101,7 +105,7 @@ export async function listBookings(options: { group?: BookingGroup; q?: string; 
     const [rows, total, statusCounts] = await Promise.all([
         db.booking.findMany({ where, orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: listInclude }),
         db.booking.count({ where }),
-        db.booking.groupBy({ by: ["status"], _count: { _all: true } }),
+        db.booking.groupBy({ by: ["status"], where: bookingWhere(scope), _count: { _all: true } }),
     ]);
 
     const byStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
@@ -161,9 +165,10 @@ export interface AdminBookingDetail extends AdminBookingListItem {
     canEditPrice: boolean;
 }
 
-export async function getBookingDetail(id: string): Promise<AdminBookingDetail | null> {
-    const b = await db.booking.findUnique({
-        where: { id },
+// A booking outside the admin's stores is treated as if it does not exist. A city picked in the switcher does not hide it.
+export async function getBookingDetail(scope: AdminScope, id: string): Promise<AdminBookingDetail | null> {
+    const b = await db.booking.findFirst({
+        where: { id, ...storeOnlyWhere(scope) },
         include: {
             ...listInclude,
             technician: { select: { id: true, name: true, phone: true } },
@@ -242,18 +247,22 @@ export interface AssignableTechnician {
     worksInDistrict: boolean;
     handlesAppliance: boolean;
     isCurrent: boolean;
+    storeName: string;
+    // Same store as the booking. Picking someone from another store moves the booking to that store.
+    sameStore: boolean;
 }
 
 // Active technicians, best fit first: works in the district, handles the appliance, then fewest open jobs.
-export async function listAssignableTechnicians(bookingId: string): Promise<AssignableTechnician[] | null> {
-    const booking = await db.booking.findUnique({
-        where: { id: bookingId },
-        select: { serviceAreaId: true, applianceCategory: true, date: true, technicianId: true },
+export async function listAssignableTechnicians(scope: AdminScope, bookingId: string): Promise<AssignableTechnician[] | null> {
+    const booking = await db.booking.findFirst({
+        where: { id: bookingId, ...storeOnlyWhere(scope) },
+        select: { serviceAreaId: true, applianceCategory: true, date: true, technicianId: true, storeId: true },
     });
     if (!booking) return null;
 
     const [technicians, openJobs, sameDay] = await Promise.all([
-        db.technician.findMany({ where: { isActive: true }, include: { serviceAreas: { select: { id: true } } } }),
+        // A co-admin can only pick from their own store's technicians. The owner can pick anyone.
+        db.technician.findMany({ where: { isActive: true, ...storeOnlyWhere(scope) }, include: { serviceAreas: { select: { id: true } }, store: { select: { name: true } } } }),
         db.booking.groupBy({
             by: ["technicianId"],
             where: { technicianId: { not: null }, status: { in: OPEN_STATUSES } },
@@ -280,14 +289,16 @@ export async function listAssignableTechnicians(bookingId: string): Promise<Assi
         worksInDistrict: t.serviceAreas.some((a) => a.id === booking.serviceAreaId),
         handlesAppliance: t.specializations.includes(booking.applianceCategory),
         isCurrent: t.id === booking.technicianId,
+        storeName: t.store.name,
+        sameStore: t.storeId === booking.storeId,
     }));
 
-    const fit = (t: AssignableTechnician) => (t.worksInDistrict ? 2 : 0) + (t.handlesAppliance ? 1 : 0);
+    const fit = (t: AssignableTechnician) => (t.sameStore ? 4 : 0) + (t.worksInDistrict ? 2 : 0) + (t.handlesAppliance ? 1 : 0);
     return items.sort((a, b) => fit(b) - fit(a) || a.activeJobs - b.activeJobs || a.name.localeCompare(b.name));
 }
 
 // Confirms the booking and assigns a technician in one step. Also used to reassign or change the arrival time.
-export async function assignBooking(bookingId: string, adminId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
+export async function assignBooking(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
     const parsed = AssignInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
 
@@ -297,15 +308,22 @@ export async function assignBooking(bookingId: string, adminId: string, raw: unk
         return fail("invalid_arrival", "Choose an arrival time from now up to 60 days ahead");
     }
 
-    const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { technician: { select: { id: true, name: true } } } });
+    const adminId = scope.adminId;
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) }, include: { technician: { select: { id: true, name: true } } } });
     if (!booking) return fail("not_found", "Booking not found");
     if (!OPEN_STATUSES.includes(booking.status)) return fail("closed", "This booking is already closed");
 
-    const technician = await db.technician.findUnique({ where: { id: parsed.data.technicianId }, select: { id: true, name: true, isActive: true } });
-    if (!technician || !technician.isActive) return fail("technician_unavailable", "That technician is not active");
+    const technician = await db.technician.findUnique({ where: { id: parsed.data.technicianId }, select: { id: true, name: true, isActive: true, storeId: true, store: { select: { name: true } } } });
+    // A co-admin cannot reach another store's technician. The technician simply does not exist for them.
+    if (!technician || !canAccessStore(scope, technician.storeId)) return fail("technician_unavailable", "That technician is not available");
+    if (!technician.isActive) return fail("technician_unavailable", "That technician is not active");
+    // The owner may pick a technician from another store. The job then earns for that technician's store.
+    const movesStore = technician.storeId !== booking.storeId;
 
     const sameTechnician = booking.technicianId === technician.id;
-    const note = sameTechnician
+    const note = movesStore
+        ? `Assigned to ${technician.name} of ${technician.store.name}, arrival ${formatIst(arrival)}. The booking now belongs to ${technician.store.name}.`
+        : sameTechnician
         ? `Arrival time set to ${formatIst(arrival)}`
         : booking.technician
           ? `Reassigned from ${booking.technician.name} to ${technician.name}, arrival ${formatIst(arrival)}`
@@ -318,6 +336,7 @@ export async function assignBooking(bookingId: string, adminId: string, raw: unk
             data: {
                 status: "CONFIRMED",
                 technicianId: technician.id,
+                ...(movesStore ? { storeId: technician.storeId } : {}),
                 confirmedArrivalAt: arrival,
                 ...(sameTechnician ? {} : { etaAt: null }),
             },
@@ -341,14 +360,15 @@ export async function assignBooking(bookingId: string, adminId: string, raw: unk
     });
     await notifyAssigned(bookingId, booking.technicianId);
 
-    return ok((await getBookingDetail(bookingId))!);
+    return ok((await getBookingDetail(scope, bookingId))!);
 }
 
-export async function cancelBookingByAdmin(bookingId: string, adminId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
+export async function cancelBookingByAdmin(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
     const parsed = CancelInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
 
-    const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true } });
+    const adminId = scope.adminId;
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) }, select: { status: true } });
     if (!booking) return fail("not_found", "Booking not found");
     if (!OPEN_STATUSES.includes(booking.status)) return fail("closed", "This booking is already closed");
 
@@ -376,17 +396,18 @@ export async function cancelBookingByAdmin(bookingId: string, adminId: string, r
     });
     await notifyCancelled(bookingId);
 
-    return ok((await getBookingDetail(bookingId))!);
+    return ok((await getBookingDetail(scope, bookingId))!);
 }
 
-export async function updateBookingPrice(bookingId: string, adminId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
+export async function updateBookingPrice(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
     const parsed = PriceInputSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
 
-    const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, price: true } });
+    const adminId = scope.adminId;
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) }, select: { status: true, price: true } });
     if (!booking) return fail("not_found", "Booking not found");
     if (!OPEN_STATUSES.includes(booking.status)) return fail("closed", "The price of a closed booking cannot be changed");
-    if (booking.price === parsed.data.price) return ok((await getBookingDetail(bookingId))!);
+    if (booking.price === parsed.data.price) return ok((await getBookingDetail(scope, bookingId))!);
 
     const note = `Price changed from ₹${booking.price} to ₹${parsed.data.price}${parsed.data.note ? `: ${parsed.data.note}` : ""}`;
     const changed = await db.$transaction(async (tx) => {
@@ -413,7 +434,7 @@ export async function updateBookingPrice(bookingId: string, adminId: string, raw
     });
     await notifyPriceChanged(bookingId, booking.price);
 
-    return ok((await getBookingDetail(bookingId))!);
+    return ok((await getBookingDetail(scope, bookingId))!);
 }
 
 export interface DashboardStats {
@@ -431,7 +452,9 @@ export interface DashboardStats {
     teamNow: { id: string; name: string; openJobs: number }[];
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+export async function getDashboardStats(scope: AdminScope): Promise<DashboardStats> {
+    const bw = bookingWhere(scope);
+    const tw = technicianWhere(scope);
     const today = istDateString();
     const dayStart = istDateToUtc(today);
     const dayEnd = new Date(dayStart.getTime() + 86400000);
@@ -440,23 +463,23 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const staleBefore = new Date(Date.now() - UNASSIGNED_ALERT_MINUTES * 60000);
 
     const [statusCounts, newToday, doneToday, collectedToday, doneMonth, collectedMonth, stale, activeTechnicians, busy, recent, delayed, pendingClaims, failedMessages, queueRows, scheduleRows, team] = await Promise.all([
-        db.booking.groupBy({ by: ["status"], _count: { _all: true } }),
-        db.booking.count({ where: { createdAt: { gte: dayStart, lt: dayEnd } } }),
-        db.booking.count({ where: { status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
-        db.booking.aggregate({ _sum: { amountCollected: true }, where: { status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
-        db.booking.count({ where: { status: "COMPLETED", completedAt: { gte: monthStart } } }),
-        db.booking.aggregate({ _sum: { amountCollected: true }, where: { status: "COMPLETED", completedAt: { gte: monthStart } } }),
-        db.booking.count({ where: { status: "NEW", createdAt: { lt: staleBefore } } }),
-        db.technician.count({ where: { isActive: true } }),
-        db.booking.groupBy({ by: ["technicianId"], where: { technicianId: { not: null }, status: { in: OPEN_STATUSES }, technician: { isActive: true } } }),
-        db.booking.findMany({ where: { createdAt: { gte: chartStart } }, select: { createdAt: true } }),
-        db.booking.count({ where: { status: "DELAYED" } }),
-        db.warrantyClaim.count({ where: { status: "PENDING" } }),
-        db.notificationLog.count({ where: { status: "FAILED", createdAt: { gte: new Date(Date.now() - 3 * 86400000) } } }),
-        db.booking.findMany({ where: { status: "NEW" }, orderBy: { createdAt: "asc" }, take: 5, include: listInclude }),
-        db.booking.findMany({ where: { status: { in: ["CONFIRMED", "ARRIVING", "WORKING", "DELAYED"] } }, orderBy: [{ date: "asc" }], take: 40, include: listInclude }),
+        db.booking.groupBy({ by: ["status"], where: bw, _count: { _all: true } }),
+        db.booking.count({ where: { ...bw, createdAt: { gte: dayStart, lt: dayEnd } } }),
+        db.booking.count({ where: { ...bw, status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
+        db.booking.aggregate({ _sum: { amountCollected: true }, where: { ...bw, status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
+        db.booking.count({ where: { ...bw, status: "COMPLETED", completedAt: { gte: monthStart } } }),
+        db.booking.aggregate({ _sum: { amountCollected: true }, where: { ...bw, status: "COMPLETED", completedAt: { gte: monthStart } } }),
+        db.booking.count({ where: { ...bw, status: "NEW", createdAt: { lt: staleBefore } } }),
+        db.technician.count({ where: { ...tw, isActive: true } }),
+        db.booking.groupBy({ by: ["technicianId"], where: { ...bw, technicianId: { not: null }, status: { in: OPEN_STATUSES }, technician: { isActive: true } } }),
+        db.booking.findMany({ where: { ...bw, createdAt: { gte: chartStart } }, select: { createdAt: true } }),
+        db.booking.count({ where: { ...bw, status: "DELAYED" } }),
+        db.warrantyClaim.count({ where: { status: "PENDING", originalBooking: bw } }),
+        db.notificationLog.count({ where: { ...storeOnlyWhere(scope), status: "FAILED", createdAt: { gte: new Date(Date.now() - 3 * 86400000) } } }),
+        db.booking.findMany({ where: { ...bw, status: "NEW" }, orderBy: { createdAt: "asc" }, take: 5, include: listInclude }),
+        db.booking.findMany({ where: { ...bw, status: { in: ["CONFIRMED", "ARRIVING", "WORKING", "DELAYED"] } }, orderBy: [{ date: "asc" }], take: 40, include: listInclude }),
         db.technician.findMany({
-            where: { isActive: true },
+            where: { ...tw, isActive: true },
             orderBy: { name: "asc" },
             select: { id: true, name: true, _count: { select: { bookings: { where: { status: { in: OPEN_STATUSES } } } } } },
         }),

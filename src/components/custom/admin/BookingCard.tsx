@@ -1,6 +1,8 @@
+"use client";
 import React from "react";
 import { MapPin, User } from "lucide-react";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
+import { useAdmin } from "@/components/custom/admin/AdminContext";
 import { RowCard } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { CATEGORY_LABELS } from "@/constants/appliances";
@@ -15,7 +17,10 @@ function waited(iso: string): string {
 
 // One booking as a card: the visit time leads because that is what the admin plans around.
 export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; overdue?: boolean }) {
+  const { me } = useAdmin();
   const alert = b.isStale || overdue;
+  // The owner sees which store a booking belongs to once there is more than one store.
+  const showStore = !!me?.isOwner && new Set(me.cities.map((c) => c.id)).size > 1;
   return (
     <RowCard href={`/admin/bookings/${b.id}`} tone={alert ? "alert" : undefined}>
       <div className="flex items-start justify-between gap-2">
@@ -39,6 +44,7 @@ export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; o
           <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
           {b.town}, {b.district}
         </span>
+        {showStore && <span className="rounded bg-slate-100 px-1.5 text-[11px] text-slate-600">{b.storeName}</span>}
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-xs">
         <span className={b.technicianName ? "text-slate-700" : "font-medium text-amber-700"}>{b.technicianName ? `Technician: ${b.technicianName}` : "No technician yet"}</span>

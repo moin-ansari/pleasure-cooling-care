@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordLedgerEntry } from "@/lib/domain/finance";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
-        const result = await recordLedgerEntry(params.id, adminId, await request.json());
+        const result = await recordLedgerEntry(scope, params.id, await request.json());
         if (!result.ok) {
             return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: result.code === "not_found" ? 404 : 400 });
         }

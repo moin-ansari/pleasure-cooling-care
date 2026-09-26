@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { APPLIANCE_CATEGORIES, type ApplianceCategoryValue } from "@/constants/appliances";
 import { createServices, listServices, listServicesForAdmin } from "@/lib/domain/services";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminId, unauthorizedResponse, getAdminScope, forbiddenResponse } from "@/helpers/requireAdmin";
+import { isOwner } from "@/lib/scope";
 import { STOREFRONT_TAG } from "@/lib/storefront";
 
 export async function GET(request: NextRequest) {
@@ -26,8 +27,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
+        if (!isOwner(scope)) return forbiddenResponse();
+        const adminId = scope.adminId;
 
         const result = await createServices(adminId, await request.json());
         if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: result.code === "duplicate" ? 409 : 400 });

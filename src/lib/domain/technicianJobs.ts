@@ -3,8 +3,9 @@ import { istDateString, slotToMinutes } from "@/lib/time";
 import { TECHNICIAN_TRANSITIONS, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { JobStatusUpdateSchema } from "@/schema/technicianJob";
-import { commissionNote, commissionTermsFor } from "./finance";
-import { computeCommission } from "@/lib/money";
+import { commissionNote } from "./finance";
+import { getStoreTerms } from "./stores";
+import { splitCommission } from "@/lib/money";
 import { recomputeTechnicianStats } from "./reviews";
 import { notifyArriving, notifyCompleted, notifyDelayed } from "./notifications";
 import { fail, ok, type Result } from "./result";
@@ -127,6 +128,8 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
     let data: Record<string, unknown> = {};
     let note: string | null = null;
     let commission = 0;
+    let ownerShare = 0;
+    let inMainStore = true;
     let commissionText = "";
 
     if (update.status === "ARRIVING") {
@@ -140,8 +143,12 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
             ? await db.service.findUnique({ where: { id: current.serviceId }, select: { warrantyDurationDays: true } })
             : null;
         const days = service?.warrantyDurationDays ?? 0;
-        const terms = await commissionTermsFor(!!current.warrantyClaimOfId);
-        commission = computeCommission(update.laborAmount, terms);
+        // The store's terms at this moment. A free guarantee re-service earns nothing.
+        const terms = await getStoreTerms(current.storeId, !!current.warrantyClaimOfId);
+        const split = splitCommission(update.laborAmount, terms);
+        commission = split.technicianOwes;
+        ownerShare = split.ownerShare;
+        inMainStore = terms.isMain;
         commissionText = commissionNote(update.laborAmount, terms);
         data = {
             completedAt: now,
@@ -152,6 +159,7 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
             warrantyExpiresAt: days > 0 && !current.warrantyClaimOfId ? new Date(now.getTime() + days * 86400000) : null,
             commissionRateApplied: terms.ratePercent.toFixed(2),
             commissionFlatApplied: terms.flatAmount.toFixed(2),
+            ownerRateApplied: terms.ownerRatePercent.toFixed(2),
         };
     }
 
@@ -171,7 +179,13 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
             await recomputeTechnicianStats(tx, technicianId);
             if (commission > 0) {
                 await tx.ledgerEntry.create({
-                    data: { technicianId, bookingId: id, type: "COMMISSION_OWED", amount: commission.toFixed(2), note: commissionText },
+                    data: { technicianId, storeId: current.storeId, bookingId: id, type: "COMMISSION_OWED", amount: commission.toFixed(2), note: commissionText },
+                });
+            }
+            // A co-admin's store also owes the owner their share. In the owner's own store there is no second step.
+            if (!inMainStore && ownerShare > 0) {
+                await tx.storeLedgerEntry.create({
+                    data: { storeId: current.storeId, bookingId: id, type: "OWNER_SHARE_OWED", amount: ownerShare.toFixed(2), note: `Owner share of ${current.bookingRef}` },
                 });
             }
         }

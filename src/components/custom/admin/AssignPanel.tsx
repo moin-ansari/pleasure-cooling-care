@@ -49,6 +49,9 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
       setError("Choose a technician");
       return;
     }
+    // Only the owner ever sees another store's technician here. The job then earns for that store.
+    const chosen = list?.find((t) => t.id === selected);
+    if (chosen && !chosen.sameStore && !window.confirm(`${chosen.name} belongs to ${chosen.storeName}. The booking will move to ${chosen.storeName}, and that store earns from it. Continue?`)) return;
     setBusy(true);
     setError("");
     try {
@@ -96,6 +99,7 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
               </span>
               <span className="flex flex-wrap gap-1.5">
                 <Badge tone={t.worksInDistrict ? "good" : "warn"}>{t.worksInDistrict ? `Works in ${booking.district}` : `Not set for ${booking.district}`}</Badge>
+                {!t.sameStore && <Badge tone="warn">{t.storeName}</Badge>}
                 <Badge tone={t.handlesAppliance ? "good" : "warn"}>
                   {t.handlesAppliance ? `Handles ${CATEGORY_LABELS[booking.applianceCategory]}` : `Not listed for ${CATEGORY_LABELS[booking.applianceCategory]}`}
                 </Badge>

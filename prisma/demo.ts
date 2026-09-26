@@ -4,7 +4,7 @@
 import bcryptjs from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { generateBookingRef } from "../src/lib/bookingRef";
-import { computeCommission } from "../src/lib/money";
+import { splitCommission } from "../src/lib/money";
 import { rankFor } from "../src/lib/rank";
 import { addDaysToDateString, istDateString, istDateToUtc } from "../src/lib/time";
 
@@ -34,12 +34,26 @@ const PATH: Record<Status, Status[]> = {
 };
 
 async function main() {
-    const area = { bareilly: await db.serviceArea.findFirstOrThrow({ where: { district: "Bareilly" } }), pilibhit: await db.serviceArea.findFirstOrThrow({ where: { district: "Pilibhit" } }) };
     await db.settings.upsert({ where: { id: 1 }, update: {}, create: { id: 1 } });
+    const mainStore = await db.store.findFirstOrThrow({ where: { isMain: true } });
+    await db.store.update({ where: { id: mainStore.id }, data: { technicianRatePercent: "20", ownerRatePercent: "20", flatAmount: "0" } });
+
+    // A second store run by a co-admin, so both views can be tried. It keeps 10 of the 20 points; the owner gets 10.
+    const pilStore = await db.store.upsert({
+        where: { name: "Pilibhit Store" },
+        update: { technicianRatePercent: "20", ownerRatePercent: "10", flatAmount: "0", isActive: true },
+        create: { name: "Pilibhit Store", technicianRatePercent: "20", ownerRatePercent: "10", flatAmount: "0" },
+    });
+    await db.serviceArea.updateMany({ where: { district: "Bareilly" }, data: { storeId: mainStore.id } });
+    await db.serviceArea.updateMany({ where: { district: "Pilibhit" }, data: { storeId: pilStore.id } });
+    const coAdminData = { name: "Pilibhit Manager", phone: "9000000002", password: await bcryptjs.hash("Password#123", 10), isAdmin: true, role: "CO_ADMIN" as const, storeId: pilStore.id, isActive: true };
+    await db.adminUser.upsert({ where: { email: "pilibhit@example.com" }, update: coAdminData, create: { email: "pilibhit@example.com", ...coAdminData } });
+    const area = { bareilly: await db.serviceArea.findFirstOrThrow({ where: { district: "Bareilly" } }), pilibhit: await db.serviceArea.findFirstOrThrow({ where: { district: "Pilibhit" } }) };
 
     // ---- wipe ----
     await db.review.deleteMany();
     await db.warrantyClaim.deleteMany();
+    await db.storeLedgerEntry.deleteMany();
     await db.ledgerEntry.deleteMany();
     await db.expense.deleteMany();
     await db.notificationLog.deleteMany();
@@ -69,11 +83,11 @@ async function main() {
     const pinHash = await bcryptjs.hash("123456", 10);
     const people = [
         { name: "Ravi Kumar", email: "ravi@example.com", phone: "9876543210", cats: ["AC", "REFRIGERATOR"], areas: [area.bareilly] },
-        { name: "Amit Sharma", email: "amit@example.com", phone: "9876543211", cats: ["AC", "GEYSER"], areas: [area.bareilly, area.pilibhit] },
+        { name: "Amit Sharma", email: "amit@example.com", phone: "9876543211", cats: ["AC", "GEYSER"], areas: [area.bareilly] },
         { name: "Sanjay Verma", email: "sanjay@example.com", phone: "9876543212", cats: ["WASHING_MACHINE", "REFRIGERATOR"], areas: [area.bareilly] },
         { name: "Imran Khan", email: "imran@example.com", phone: "9876543213", cats: ["AC", "WASHING_MACHINE", "GEYSER"], areas: [area.pilibhit] },
     ];
-    const tech: Record<string, { id: string; name: string }> = {};
+    const tech: Record<string, { id: string; name: string; storeId: string }> = {};
     for (const p of people) {
         const data = {
             name: p.name,
@@ -83,6 +97,7 @@ async function main() {
             failedPinAttempts: 0,
             lockedUntil: null,
             isActive: true,
+            storeId: p.areas[0].storeId,
             experienceYears: 4,
             specializations: p.cats as never[],
             jobsCompletedCount: 0,
@@ -92,7 +107,7 @@ async function main() {
             serviceAreas: { set: p.areas.map((a) => ({ id: a.id })) },
         };
         const t = await db.technician.upsert({ where: { workEmail: p.email }, update: data, create: { ...data, serviceAreas: { connect: p.areas.map((a) => ({ id: a.id })) } } });
-        tech[p.name.split(" ")[0]] = { id: t.id, name: t.name };
+        tech[p.name.split(" ")[0]] = { id: t.id, name: t.name, storeId: t.storeId };
     }
 
     // ---- bookings ----
@@ -130,6 +145,7 @@ async function main() {
           town,
           pincode,
           serviceAreaId: a.id,
+          storeId: a.storeId,
           lat: 28.367 + Math.random() * 0.03,
           lng: 79.43 + Math.random() * 0.03,
           date: day(o.dateOffset),
@@ -174,12 +190,19 @@ async function main() {
         });
       }
       if (o.status === "COMPLETED" && t) {
-        const commission = computeCommission(labor, { ratePercent: 15, flatAmount: 0 });
-        if (commission > 0) {
+        const inPilibhit = a.storeId === pilStore.id;
+        const split = splitCommission(labor, { ratePercent: 20, ownerRatePercent: inPilibhit ? 10 : 20, flatAmount: 0 });
+        if (split.technicianOwes > 0) {
           await db.ledgerEntry.create({
-            data: { technicianId: t.id, bookingId: booking.id, type: "COMMISSION_OWED", amount: commission.toFixed(2), note: `15% of ₹${labor}`, createdAt: completedAt! },
+            data: { technicianId: t.id, storeId: a.storeId, bookingId: booking.id, type: "COMMISSION_OWED", amount: split.technicianOwes.toFixed(2), note: `20% of ₹${labor}`, createdAt: completedAt! },
           });
+          if (inPilibhit) {
+            await db.storeLedgerEntry.create({
+              data: { storeId: a.storeId, bookingId: booking.id, type: "OWNER_SHARE_OWED", amount: split.ownerShare.toFixed(2), note: `Owner share of ${booking.bookingRef}`, createdAt: completedAt! },
+            });
+          }
         }
+        await db.booking.update({ where: { id: booking.id }, data: { commissionRateApplied: "20.00", ownerRateApplied: inPilibhit ? "10.00" : "20.00", commissionFlatApplied: "0.00" } });
       }
       created[key] = { id: booking.id, ref: booking.bookingRef };
       return booking;
@@ -229,8 +252,9 @@ async function main() {
     }
 
     // Money: an office payment, an adjustment, expenses and ad spend.
-    await db.ledgerEntry.create({ data: { technicianId: tech.Ravi.id, type: "OFFICE_PAYMENT", amount: "-40.00", note: "Cash paid at office", createdAt: ago(20 * HOUR) } });
-    await db.ledgerEntry.create({ data: { technicianId: tech.Sanjay.id, type: "ADJUSTMENT", amount: "-10.00", note: "Goodwill for a late job", createdAt: ago(40 * HOUR) } });
+    await db.ledgerEntry.create({ data: { technicianId: tech.Ravi.id, storeId: tech.Ravi.storeId, type: "OFFICE_PAYMENT", amount: "-40.00", note: "Cash paid at office", createdAt: ago(20 * HOUR) } });
+    await db.ledgerEntry.create({ data: { technicianId: tech.Sanjay.id, storeId: tech.Sanjay.storeId, type: "ADJUSTMENT", amount: "-10.00", note: "Goodwill for a late job", createdAt: ago(40 * HOUR) } });
+    await db.storeLedgerEntry.create({ data: { storeId: pilStore.id, type: "STORE_PAYMENT", amount: "-100.00", note: "Paid to the owner", createdAt: ago(10 * HOUR) } });
     const today = istDateToUtc(istDateString());
     const expenses: [string, string, number, number, string | null][] = [
         ["EXPENSE", "Fuel", 250, 0, "Technician bike fuel"],
@@ -241,6 +265,8 @@ async function main() {
     for (const [type, category, amount, back, note] of expenses) {
         await db.expense.create({ data: { type: type as never, category, amount: amount.toFixed(2), date: new Date(today.getTime() - back * DAY), note } });
     }
+    // One cost that belongs to the Pilibhit store only.
+    await db.expense.create({ data: { type: "EXPENSE", category: "Office rent", amount: "1500.00", date: new Date(today.getTime() - DAY), note: "Pilibhit office", storeId: pilStore.id } });
 
     // Technician stats from what was just created.
     const settings = await db.settings.findUniqueOrThrow({ where: { id: 1 } });
@@ -260,6 +286,7 @@ async function main() {
     console.log("Sample data ready:", counts.map((c) => `${c.status} ${c._count._all}`).join(", "));
     console.log("Technician logins (PIN 123456):", people.map((p) => p.email).join(", "));
     console.log("Customer to track:  9333333331 (also 9111111101 to 9111111107)");
+    console.log("Co-admin (Pilibhit Store): pilibhit@example.com / Password#123");
 }
 
 main()

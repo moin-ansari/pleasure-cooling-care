@@ -6,6 +6,7 @@ import { CheckSquare, Pencil, Plus, Search, ShieldCheck, Square } from "lucide-r
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { useAdmin } from "@/components/custom/admin/AdminContext";
 import { Chips, EmptyState, ListSkeleton, PageTitle } from "@/components/custom/admin/ui";
 import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, type ApplianceCategoryValue } from "@/constants/appliances";
 import { bulkPrice } from "@/schema/service";
@@ -43,6 +44,9 @@ function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: 
 }
 
 export default function ServicesPage() {
+  const { me } = useAdmin();
+  // Only the owner can change services and prices. Co-admins can look.
+  const canEdit = me?.isOwner ?? false;
   const [services, setServices] = useState<AdminServiceItem[] | null>(null);
   const [category, setCategory] = useState<Category>("ALL");
   const [status, setStatus] = useState<Status>("all");
@@ -167,16 +171,18 @@ export default function ServicesPage() {
         title="Services"
         sub={services ? `${services.length} services · ${services.filter((s) => s.isActive).length} shown to customers` : undefined}
         action={
-          <div className="flex gap-2">
-            <Button size="sm" variant={selecting ? "default" : "outline"} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
-              {selecting ? "Done" : "Select"}
-            </Button>
-            <Button asChild size="sm">
-              <Link href="/admin/services/new">
-                <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Add
-              </Link>
-            </Button>
-          </div>
+          canEdit && (
+            <div className="flex gap-2">
+              <Button size="sm" variant={selecting ? "default" : "outline"} onClick={() => (selecting ? stopSelecting() : setSelecting(true))}>
+                {selecting ? "Done" : "Select"}
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/admin/services/new">
+                  <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Add
+                </Link>
+              </Button>
+            </div>
+          )
         }
       />
 
@@ -231,9 +237,13 @@ export default function ServicesPage() {
                         <p className={`font-semibold leading-tight ${s.isActive ? "text-slate-900" : "text-slate-500"}`}>{s.serviceType}</p>
                         <p className="text-xs text-slate-500">{s.applianceSubType}</p>
                       </div>
-                      <button type="button" onClick={() => openEdit(s)} className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-base font-bold text-blue-800" aria-label={`Change price of ${s.serviceType} ${s.applianceSubType}, now ₹${s.price}`}>
-                        ₹{s.price}
-                      </button>
+                      {canEdit ? (
+                        <button type="button" onClick={() => openEdit(s)} className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1 text-base font-bold text-blue-800" aria-label={`Change price of ${s.serviceType} ${s.applianceSubType}, now ₹${s.price}`}>
+                          ₹{s.price}
+                        </button>
+                      ) : (
+                        <span className="shrink-0 px-1 text-base font-bold text-blue-800">₹{s.price}</span>
+                      )}
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <div className="min-w-0 text-xs text-slate-600">
@@ -243,12 +253,16 @@ export default function ServicesPage() {
                         </span>
                         <span className="ml-2 text-slate-400">{s.bookingCount} {s.bookingCount === 1 ? "booking" : "bookings"}</span>
                       </div>
+                      {canEdit ? (
                       <div className="flex shrink-0 items-center gap-2">
                         <Link href={`/admin/services/${s.id}`} className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100" aria-label={`Edit ${s.serviceType} ${s.applianceSubType}`}>
                           <Pencil className="h-4 w-4" aria-hidden="true" />
                         </Link>
                         <Switch on={s.isActive} disabled={busyId === s.id} label={`${s.isActive ? "Hide" : "Show"} ${s.serviceType} ${s.applianceSubType} on the website`} onChange={(v) => toggleActive(s, v)} />
                       </div>
+                      ) : (
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${s.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>{s.isActive ? "Shown" : "Hidden"}</span>
+                      )}
                     </div>
                   </li>
                 ))}

@@ -131,12 +131,7 @@ const Login = () => {
               </form>
             </Form>
           </div>
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
+          <p className="mt-4 text-center text-sm text-muted-foreground">Accounts are created by the owner. Ask the owner if you need access.</p>
         </div>
       </div>
     </div>

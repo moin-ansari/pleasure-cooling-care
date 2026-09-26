@@ -4,6 +4,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardList, IndianRupee, MessageSquareWarning, PauseCircle, ShieldCheck, TrendingUp, Users } from "lucide-react";
 import BookingCard from "@/components/custom/admin/BookingCard";
+import CitySwitcher from "@/components/custom/admin/CitySwitcher";
 import { EmptyState, ListSkeleton, Panel, StatTile } from "@/components/custom/admin/ui";
 import { UNASSIGNED_ALERT_MINUTES } from "@/constants/booking";
 import { istDateString } from "@/lib/time";
@@ -59,7 +60,10 @@ export default function Dashboard() {
 
   return (
     <div className="grid gap-3">
-      <p className="text-xs font-medium text-slate-500">{day}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-slate-500">{day}</p>
+        <CitySwitcher />
+      </div>
 
       {hasAlerts && (
         <div className="grid gap-1.5 sm:grid-cols-2">

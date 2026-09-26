@@ -82,6 +82,8 @@ export async function createBooking(
     const data = {
         source: options.source ?? "WEB",
         status: "NEW" as const,
+        // The store that serves this city earns from the booking.
+        storeId: area.storeId,
         idempotencyKey: input.idempotencyKey,
         customerName: input.customerName,
         mobile: input.mobile,

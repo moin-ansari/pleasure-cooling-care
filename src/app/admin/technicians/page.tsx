@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useAdmin } from "@/components/custom/admin/AdminContext";
 import { EmptyState, ListSkeleton, PageTitle, RowCard } from "@/components/custom/admin/ui";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { TechnicianListItem } from "@/lib/domain/technicians";
@@ -25,6 +26,7 @@ function StatusPill({ t }: { t: TechnicianListItem }) {
 
 export default function TechniciansPage() {
   const router = useRouter();
+  const { me } = useAdmin();
   const [technicians, setTechnicians] = useState<TechnicianListItem[] | null>(null);
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export default function TechniciansPage() {
                   <span className={t.activeJobs > 0 ? "font-medium text-amber-700" : ""}>{t.activeJobs > 0 ? `${t.activeJobs} open` : "Free"}</span>
                 </div>
                 <p className="mt-1 truncate text-xs text-slate-500">
+                  {me?.isOwner && <strong className="font-medium text-slate-700">{t.storeName} · </strong>}
                   {t.specializations.map((c) => CATEGORY_LABELS[c]).join(", ") || "No appliances set"} · {t.districts.join(", ") || "No district"}
                 </p>
               </RowCard>

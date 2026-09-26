@@ -32,7 +32,6 @@ export const config = {
     matcher: [
       "/",
       "/login",
-      "/signup",
       "/home",
       "/services",
       "/booknow",

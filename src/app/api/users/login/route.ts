@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
             ? await bcryptjs.compare(password, existingUser.password)
             : false;
 
-        if(!existingUser || !validatePassword){
+        if(!existingUser || !validatePassword || !existingUser.isActive){
             return NextResponse.json({ status: "failed", message: "Invalid email or password" })
         }
 

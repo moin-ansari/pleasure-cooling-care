@@ -38,6 +38,8 @@ const TechnicianBase = z.object({
         .transform((v) => (v ? v : undefined)),
     specializations: z.array(z.enum(APPLIANCE_CATEGORIES)),
     serviceAreaIds: z.array(z.string().min(1)),
+    // Only the owner can choose the store. A co-admin's technicians always belong to their own store.
+    storeId: z.string().min(1).optional(),
     accountHolderName: optionalText(80),
     accountNumber: z
         .string()

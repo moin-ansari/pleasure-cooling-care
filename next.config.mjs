@@ -14,7 +14,7 @@ const nextConfig = {
       { source: "/technician/:path*", headers: noindex },
       { source: "/api/:path*", headers: noindex },
       { source: "/login", headers: noindex },
-      { source: "/signup", headers: noindex },
+
       { source: "/track", headers: noindex },
     ];
   },

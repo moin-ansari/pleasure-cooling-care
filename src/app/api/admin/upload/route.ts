@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { IMAGE_FOLDERS, MAX_IMAGE_BYTES, saveImage, type ImageFolder } from "@/lib/storage";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminScope, forbiddenResponse, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { isOwner } from "@/lib/scope";
 
 export async function POST(request: NextRequest) {
     try {
-        if (!(await getAdminId(request))) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
         const form = await request.formData();
         const file = form.get("file");
         const folder = String(form.get("folder") ?? "services") as ImageFolder;
         if (!(file instanceof File)) return NextResponse.json({ status: "error", message: "Choose an image" }, { status: 400 });
+        if (folder === "services" && !isOwner(scope)) return forbiddenResponse();
         if (!IMAGE_FOLDERS.includes(folder)) return NextResponse.json({ status: "error", message: "Unknown folder" }, { status: 400 });
         if (file.size > MAX_IMAGE_BYTES) return NextResponse.json({ status: "error", code: "too_large", message: "The image is larger than 2 MB. Choose a smaller one." }, { status: 413 });
 

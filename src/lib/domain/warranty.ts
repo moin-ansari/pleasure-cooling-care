@@ -6,6 +6,7 @@ import { formatIst, istDateToUtc, istLocalToUtc } from "@/lib/time";
 import { ApproveClaimSchema, ClaimInputSchema, RejectClaimSchema } from "@/schema/warranty";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { notifyWarrantyApproved, notifyWarrantyClaim, notifyWarrantyRejected } from "./notifications";
+import { bookingWhere, canAccessStore, storeOnlyWhere, type AdminScope } from "@/lib/scope";
 import { fail, ok, type Result } from "./result";
 
 export type ClaimStatusValue = "PENDING" | "APPROVED" | "REJECTED";
@@ -94,9 +95,9 @@ export interface ClaimItem {
     freeBooking: { id: string; bookingRef: string; status: string } | null;
 }
 
-export async function listWarrantyClaims(status?: ClaimStatusValue): Promise<ClaimItem[]> {
+export async function listWarrantyClaims(scope: AdminScope, status?: ClaimStatusValue): Promise<ClaimItem[]> {
     const rows = await db.warrantyClaim.findMany({
-        where: status ? { status } : undefined,
+        where: { ...(status ? { status } : {}), originalBooking: bookingWhere(scope) },
         orderBy: { createdAt: "desc" },
         take: 100,
         include: {
@@ -126,12 +127,12 @@ export async function listWarrantyClaims(status?: ClaimStatusValue): Promise<Cla
     }));
 }
 
-export async function pendingClaimCount(): Promise<number> {
-    return db.warrantyClaim.count({ where: { status: "PENDING" } });
+export async function pendingClaimCount(scope: AdminScope): Promise<number> {
+    return db.warrantyClaim.count({ where: { status: "PENDING", originalBooking: bookingWhere(scope) } });
 }
 
 // Approving creates the free re-service: a Rs 0 booking for the same customer, already confirmed with a technician.
-export async function approveWarrantyClaim(claimId: string, adminId: string, raw: unknown): Promise<Result<{ bookingRef: string }>> {
+export async function approveWarrantyClaim(scope: AdminScope, claimId: string, raw: unknown): Promise<Result<{ bookingRef: string }>> {
     const parsed = ApproveClaimSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
 
@@ -141,7 +142,8 @@ export async function approveWarrantyClaim(claimId: string, adminId: string, raw
         return fail("invalid_arrival", "Choose an arrival time from now up to 60 days ahead");
     }
 
-    const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });
+    const adminId = scope.adminId;
+    const claim = await db.warrantyClaim.findFirst({ where: { id: claimId, originalBooking: storeOnlyWhere(scope) }, include: { originalBooking: true } });
     if (!claim) return fail("not_found", "Claim not found");
     if (claim.status !== "PENDING") return fail("resolved", "This claim has already been decided");
 
@@ -151,8 +153,8 @@ export async function approveWarrantyClaim(claimId: string, adminId: string, raw
     }
 
     const technicianId = parsed.data.technicianId ?? original.technicianId;
-    const technician = technicianId ? await db.technician.findUnique({ where: { id: technicianId }, select: { id: true, name: true, isActive: true } }) : null;
-    if (!technician || !technician.isActive) {
+    const technician = technicianId ? await db.technician.findUnique({ where: { id: technicianId }, select: { id: true, name: true, isActive: true, storeId: true } }) : null;
+    if (!technician || !technician.isActive || !canAccessStore(scope, technician.storeId)) {
         return fail("technician_unavailable", "The original technician is not available. Choose another technician.");
     }
 
@@ -175,6 +177,7 @@ export async function approveWarrantyClaim(claimId: string, adminId: string, raw
                 bookingRef,
                 source: "ADMIN",
                 status: "CONFIRMED",
+                storeId: technician.storeId,
                 customerName: original.customerName,
                 mobile: original.mobile,
                 streetAddress: original.streetAddress,
@@ -222,16 +225,17 @@ export async function approveWarrantyClaim(claimId: string, adminId: string, raw
     return ok({ bookingRef });
 }
 
-export async function rejectWarrantyClaim(claimId: string, adminId: string, raw: unknown): Promise<Result<null>> {
+export async function rejectWarrantyClaim(scope: AdminScope, claimId: string, raw: unknown): Promise<Result<null>> {
+    const adminId = scope.adminId;
     const parsed = RejectClaimSchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
 
     const decided = await db.warrantyClaim.updateMany({
-        where: { id: claimId, status: "PENDING" },
+        where: { id: claimId, status: "PENDING", originalBooking: storeOnlyWhere(scope) },
         data: { status: "REJECTED", resolvedById: adminId, resolvedAt: new Date(), rejectReason: parsed.data.reason },
     });
     if (decided.count === 0) {
-        const exists = await db.warrantyClaim.findUnique({ where: { id: claimId }, select: { id: true } });
+        const exists = await db.warrantyClaim.findFirst({ where: { id: claimId, originalBooking: storeOnlyWhere(scope) }, select: { id: true } });
         return exists ? fail("resolved", "This claim has already been decided") : fail("not_found", "Claim not found");
     }
 

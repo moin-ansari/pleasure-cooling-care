@@ -69,14 +69,74 @@ enum NotificationStatus {
   SKIPPED
 }
 
+enum AdminRole {
+  OWNER
+  CO_ADMIN
+}
+
+enum StoreLedgerType {
+  OWNER_SHARE_OWED
+  STORE_PAYMENT
+  ADJUSTMENT
+}
+
 model AdminUser {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   password  String
-  isAdmin   Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isAdmin   Boolean   @default(false)
+  // OWNER sees every store. CO_ADMIN sees only the store they belong to.
+  role      AdminRole @default(OWNER)
+  storeId   String?
+  store     Store?    @relation(fields: [storeId], references: [id])
+  name      String    @default("")
+  phone     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
 
   @@map("admin_users")
+}
+
+// A store is a group of cities run by the owner or by co-admins. Money terms and balances are per store.
+model Store {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  // The owner's own store. Technicians pay the owner directly, so there is no store-to-owner balance.
+  isMain   Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // What a technician pays the store per job: a percentage of the service charge plus a flat amount.
+  technicianRatePercent Decimal @default(20) @db.Decimal(5, 2)
+  // How much of that percentage goes to the owner. The flat amount always goes to the owner.
+  ownerRatePercent      Decimal @default(10) @db.Decimal(5, 2)
+  flatAmount            Decimal @default(0) @db.Decimal(10, 2)
+  adminAlertPhone       String?
+
+  areas         ServiceArea[]
+  admins        AdminUser[]
+  technicians   Technician[]
+  bookings      Booking[]
+  ledgerEntries LedgerEntry[]
+  storeLedger   StoreLedgerEntry[]
+  expenses      Expense[]
+  createdAt     DateTime           @default(now())
+
+  @@map("stores")
+}
+
+// What a store owes the owner: the owner's share of each completed job, less payments made.
+model StoreLedgerEntry {
+  id        String          @id @default(cuid())
+  storeId   String
+  store     Store           @relation(fields: [storeId], references: [id])
+  bookingId String?
+  type      StoreLedgerType
+  amount    Decimal         @db.Decimal(10, 2)
+  note      String?
+  createdAt DateTime        @default(now())
+
+  @@index([storeId])
+  @@map("store_ledger_entries")
 }
 
 model ServiceArea {
@@ -84,6 +144,8 @@ model ServiceArea {
   state       String
   district    String
   isActive    Boolean      @default(true)
+  storeId     String
+  store       Store        @relation(fields: [storeId], references: [id])
   technicians Technician[]
   bookings    Booking[]
 
@@ -136,6 +198,8 @@ model Technician {
   averageRating      Float                      @default(0)
   ratingCount        Int                        @default(0)
   isActive           Boolean                    @default(true)
+  storeId            String
+  store              Store                      @relation(fields: [storeId], references: [id])
   bookings           Booking[]
   reviews            Review[]
   ledgerEntries      LedgerEntry[]
@@ -183,9 +247,13 @@ model Booking {
   // The commission terms in force when the job was completed, kept so later corrections use the same terms.
   commissionRateApplied Decimal? @db.Decimal(5, 2)
   commissionFlatApplied Decimal? @db.Decimal(10, 2)
+  ownerRateApplied      Decimal? @db.Decimal(5, 2)
 
   technicianId String?
   technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  // The store that earns from this job. Fixed when the booking is made, or when another store's technician takes it.
+  storeId      String
+  store        Store       @relation(fields: [storeId], references: [id])
 
   warrantyClaimOfId String?
   warrantyClaimOf   Booking?  @relation("WarrantyRedo", fields: [warrantyClaimOfId], references: [id], onDelete: SetNull)
@@ -212,6 +280,7 @@ model Booking {
 
   @@index([mobile])
   @@index([status])
+  @@index([storeId])
   @@index([technicianId])
   @@index([createdAt])
   @@map("bookings")
@@ -272,12 +341,15 @@ model LedgerEntry {
   technician   Technician @relation(fields: [technicianId], references: [id])
   bookingId    String?
   booking      Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  storeId      String
+  store        Store      @relation(fields: [storeId], references: [id])
   type         LedgerType
   amount       Decimal    @db.Decimal(10, 2)
   note         String?
   createdAt    DateTime   @default(now())
 
   @@index([technicianId])
+  @@index([storeId])
   @@map("ledger_entries")
 }
 
@@ -292,6 +364,9 @@ model Expense {
   technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
   bookingId    String?
   booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  // Empty means a business-wide cost that only the owner sees.
+  storeId      String?
+  store        Store?      @relation(fields: [storeId], references: [id])
   createdAt    DateTime    @default(now())
 
   @@map("expenses")
@@ -319,6 +394,7 @@ model BlockedPhone {
 model NotificationLog {
   id               String             @id @default(cuid())
   bookingId        String?
+  storeId          String?
   channel          String
   to               String
   template         String
@@ -331,6 +407,7 @@ model NotificationLog {
   updatedAt        DateTime           @default(now()) @updatedAt
 
   @@index([status])
+  @@index([storeId])
   @@index([createdAt])
   @@index([to, createdAt])
   @@map("notification_logs")
@@ -352,17 +429,14 @@ model AuditLog {
 }
 
 model Settings {
-  id                    Int           @id @default(1)
-  commissionRatePercent Decimal       @default(15) @db.Decimal(5, 2)
-  commissionFlatAmount  Decimal       @default(0) @db.Decimal(10, 2)
-  silverMinJobs         Int           @default(25)
-  silverMinRating       Float         @default(4.0)
-  goldMinJobs           Int           @default(75)
-  goldMinRating         Float         @default(4.4)
-  diamondMinJobs        Int           @default(150)
-  diamondMinRating      Float         @default(4.7)
-  cancelBlockedFrom     BookingStatus @default(ARRIVING)
-  adminAlertPhone       String?
+  id                Int           @id @default(1)
+  silverMinJobs     Int           @default(25)
+  silverMinRating   Float         @default(4.0)
+  goldMinJobs       Int           @default(75)
+  goldMinRating     Float         @default(4.4)
+  diamondMinJobs    Int           @default(150)
+  diamondMinRating  Float         @default(4.7)
+  cancelBlockedFrom BookingStatus @default(ARRIVING)
 
   @@map("settings")
 }

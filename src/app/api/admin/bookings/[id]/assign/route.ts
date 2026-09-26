@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assignBooking } from "@/lib/domain/adminBookings";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
-        const result = await assignBooking(params.id, adminId, await request.json());
+        const result = await assignBooking(scope, params.id, await request.json());
         if (!result.ok) {
             return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: result.code === "not_found" ? 404 : 400 });
         }

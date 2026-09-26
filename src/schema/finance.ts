@@ -3,11 +3,6 @@ import { z } from "zod";
 const money = (label: string) =>
     z.number({ invalid_type_error: `Enter ${label}` }).finite().multipleOf(0.01, "At most 2 decimal places");
 
-export const CommissionSettingsSchema = z.object({
-    commissionRatePercent: money("the commission rate").min(0, "Cannot be negative").max(100, "Cannot be more than 100"),
-    commissionFlatAmount: money("the flat amount").min(0, "Cannot be negative").max(100000),
-});
-
 export const ExpenseInputSchema = z.object({
     category: z.string().trim().min(2, "Enter a category").max(60),
     amount: money("the amount").gt(0, "Enter an amount above zero").max(10000000),

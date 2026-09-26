@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +32,6 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
 
   const [phone, setPhone] = useState("");
-  const [rate, setRate] = useState("");
-  const [flat, setFlat] = useState("");
   const [cutoff, setCutoff] = useState("ARRIVING");
   const [ranks, setRanks] = useState({ silverJobs: "", silverRating: "", goldJobs: "", goldRating: "", diamondJobs: "", diamondRating: "" });
 
@@ -43,9 +42,7 @@ export default function SettingsPage() {
         if (json.status !== "success") return toast.error(json.message || "Could not load settings");
         const d: Loaded = json.data;
         setData(d);
-        setPhone(d.adminAlertPhone ?? "");
-        setRate(String(d.commission.ratePercent));
-        setFlat(String(d.commission.flatAmount));
+        setPhone(d.store?.adminAlertPhone ?? "");
         setCutoff(d.cancelBlockedFrom);
         setRanks({
           silverJobs: String(d.ranks.silver.minJobs),
@@ -73,6 +70,8 @@ export default function SettingsPage() {
   };
 
   if (!data) return <ListSkeleton rows={4} />;
+  const canEdit = data.canEditGlobal;
+  const cutoffLabel = CUTOFFS.find((c) => c.value === data.cancelBlockedFrom)?.label ?? "";
 
   const numberInput = (id: string, value: string, set: (v: string) => void, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <Input id={id} type="number" inputMode="decimal" className="h-11" value={value} onChange={(e) => set(e.target.value)} {...extra} />
@@ -80,9 +79,9 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto grid max-w-3xl gap-3">
-      <PageTitle title="Settings" sub="Rules for the whole business. Each section saves on its own." />
+      <PageTitle title="Settings" sub={canEdit ? "Rules for the whole business. Each section saves on its own." : "Your store's alert number. The business-wide rules are set by the owner."} />
 
-      <Panel title="New booking alert">
+      <Panel title={`New booking alert${data.store ? ` · ${data.store.name}` : ""}`}>
         <form
           className="grid gap-2"
           onSubmit={(e) => {
@@ -102,80 +101,91 @@ export default function SettingsPage() {
         </form>
       </Panel>
 
-      <Panel title="Commission">
-        <form
-          className="grid gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            save("commission", { commissionRatePercent: Number(rate), commissionFlatAmount: Number(flat) });
-          }}
-        >
-          <div className="grid gap-2 sm:grid-cols-2">
-            <Field id="rate" label="Percentage of the service charge">
-              {numberInput("rate", rate, setRate, { step: "0.01", min: 0, max: 100 })}
-            </Field>
-            <Field id="flat" label="Flat amount per job (₹)">
-              {numberInput("flat", flat, setFlat, { step: "0.01", min: 0 })}
-            </Field>
-          </div>
-          <p className="text-[11px] text-slate-500">Applies to jobs completed from now on. Parts are never charged commission, and a free guarantee re-service earns none.</p>
-          <Button type="submit" disabled={saving === "commission"} className="justify-self-start">
-            {saving === "commission" ? "Saving..." : "Save"}
-          </Button>
-        </form>
-      </Panel>
+      {canEdit ? (
+        <>
+          <Panel title="Commission and stores">
+            <p className="text-sm text-slate-600">
+              What technicians pay, your share and the flat amount are set per store on the{" "}
+              <Link href="/admin/stores" className="text-blue-700 underline">
+                Stores
+              </Link>{" "}
+              screen.
+            </p>
+          </Panel>
 
-      <Panel title="Customer cancellation">
-        <form
-          className="grid gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            save("cutoff", { cancelBlockedFrom: cutoff });
-          }}
-        >
-          <Field id="cutoff" label="Customers can cancel online">
-            <select id="cutoff" value={cutoff} onChange={(e) => setCutoff(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
-              {CUTOFFS.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
+          <Panel title="Customer cancellation">
+            <form
+              className="grid gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                save("cutoff", { cancelBlockedFrom: cutoff });
+              }}
+            >
+              <Field id="cutoff" label="Customers can cancel online">
+                <select id="cutoff" value={cutoff} onChange={(e) => setCutoff(e.target.value)} className="h-11 rounded-md border bg-background px-3 text-sm">
+                  {CUTOFFS.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Button type="submit" disabled={saving === "cutoff"} className="justify-self-start">
+                {saving === "cutoff" ? "Saving..." : "Save"}
+              </Button>
+            </form>
+          </Panel>
+
+          <Panel title="Technician ranks">
+            <form
+              className="grid gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                save("ranks", {
+                  silver: { minJobs: Number(ranks.silverJobs), minRating: Number(ranks.silverRating) },
+                  gold: { minJobs: Number(ranks.goldJobs), minRating: Number(ranks.goldRating) },
+                  diamond: { minJobs: Number(ranks.diamondJobs), minRating: Number(ranks.diamondRating) },
+                });
+              }}
+            >
+              <p className="text-[11px] text-slate-500">A technician needs both the completed jobs and the average rating. Everyone starts at Bronze. Saving updates all technicians straight away.</p>
+              {(["silver", "gold", "diamond"] as const).map((tier) => (
+                <div key={tier} className="grid grid-cols-2 gap-2">
+                  <Field id={`${tier}-jobs`} label={`${tier[0].toUpperCase()}${tier.slice(1)}: completed jobs`}>
+                    {numberInput(`${tier}-jobs`, ranks[`${tier}Jobs`], (v) => setRanks({ ...ranks, [`${tier}Jobs`]: v }), { min: 1 })}
+                  </Field>
+                  <Field id={`${tier}-rating`} label="Average rating">
+                    {numberInput(`${tier}-rating`, ranks[`${tier}Rating`], (v) => setRanks({ ...ranks, [`${tier}Rating`]: v }), { step: "0.1", min: 1, max: 5 })}
+                  </Field>
+                </div>
               ))}
-            </select>
-          </Field>
-          <Button type="submit" disabled={saving === "cutoff"} className="justify-self-start">
-            {saving === "cutoff" ? "Saving..." : "Save"}
-          </Button>
-        </form>
-      </Panel>
-
-      <Panel title="Technician ranks">
-        <form
-          className="grid gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            save("ranks", {
-              silver: { minJobs: Number(ranks.silverJobs), minRating: Number(ranks.silverRating) },
-              gold: { minJobs: Number(ranks.goldJobs), minRating: Number(ranks.goldRating) },
-              diamond: { minJobs: Number(ranks.diamondJobs), minRating: Number(ranks.diamondRating) },
-            });
-          }}
-        >
-          <p className="text-[11px] text-slate-500">A technician needs both the completed jobs and the average rating. Everyone starts at Bronze. Saving updates all technicians straight away.</p>
-          {(["silver", "gold", "diamond"] as const).map((tier) => (
-            <div key={tier} className="grid grid-cols-2 gap-2">
-              <Field id={`${tier}-jobs`} label={`${tier[0].toUpperCase()}${tier.slice(1)}: completed jobs`}>
-                {numberInput(`${tier}-jobs`, ranks[`${tier}Jobs`], (v) => setRanks({ ...ranks, [`${tier}Jobs`]: v }), { min: 1 })}
-              </Field>
-              <Field id={`${tier}-rating`} label="Average rating">
-                {numberInput(`${tier}-rating`, ranks[`${tier}Rating`], (v) => setRanks({ ...ranks, [`${tier}Rating`]: v }), { step: "0.1", min: 1, max: 5 })}
-              </Field>
-            </div>
-          ))}
-          <Button type="submit" disabled={saving === "ranks"} className="justify-self-start">
-            {saving === "ranks" ? "Saving..." : "Save"}
-          </Button>
-        </form>
-      </Panel>
+              <Button type="submit" disabled={saving === "ranks"} className="justify-self-start">
+                {saving === "ranks" ? "Saving..." : "Save"}
+              </Button>
+            </form>
+          </Panel>
+        </>
+      ) : (
+        <Panel title="Rules set by the owner">
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-slate-500">Customers can cancel</dt>
+            <dd>{cutoffLabel}</dd>
+            <dt className="text-slate-500">Silver</dt>
+            <dd>
+              {data.ranks.silver.minJobs} jobs and {data.ranks.silver.minRating} rating
+            </dd>
+            <dt className="text-slate-500">Gold</dt>
+            <dd>
+              {data.ranks.gold.minJobs} jobs and {data.ranks.gold.minRating} rating
+            </dd>
+            <dt className="text-slate-500">Diamond</dt>
+            <dd>
+              {data.ranks.diamond.minJobs} jobs and {data.ranks.diamond.minRating} rating
+            </dd>
+          </dl>
+          <p className="mt-2 text-[11px] text-slate-500">Your store&apos;s commission terms are on the My store screen.</p>
+        </Panel>
+      )}
     </div>
   );
 }

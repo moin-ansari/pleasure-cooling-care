@@ -6,6 +6,7 @@ import { istDateString } from "@/lib/time";
 import { rankFor, DEFAULT_THRESHOLDS, type RankThresholds } from "@/lib/rank";
 import { ReviewInputSchema, ReviewVisibilitySchema } from "@/schema/review";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
+import { storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
 import { fail, ok, type Result } from "./result";
 
 // A review can be left this long after the job was completed.
@@ -136,8 +137,8 @@ export interface AdminReview extends PublicReview {
     technicianName: string;
 }
 
-export async function listReviewsForAdmin(filter: "all" | "hidden" | "low" = "all"): Promise<AdminReview[]> {
-    const where: Prisma.ReviewWhereInput = filter === "hidden" ? { isPublic: false } : filter === "low" ? { rating: { lte: 2 } } : {};
+export async function listReviewsForAdmin(scope: AdminScope, filter: "all" | "hidden" | "low" = "all"): Promise<AdminReview[]> {
+    const where: Prisma.ReviewWhereInput = { technician: technicianWhere(scope), ...(filter === "hidden" ? { isPublic: false } : filter === "low" ? { rating: { lte: 2 } } : {}) };
     const rows = await db.review.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -160,11 +161,12 @@ export async function listReviewsForAdmin(filter: "all" | "hidden" | "low" = "al
     }));
 }
 
-export async function setReviewVisibility(id: string, adminId: string, raw: unknown): Promise<Result<{ isPublic: boolean }>> {
+export async function setReviewVisibility(scope: AdminScope, id: string, raw: unknown): Promise<Result<{ isPublic: boolean }>> {
     const parsed = ReviewVisibilitySchema.safeParse(raw);
     if (!parsed.success) return fail("invalid", "Choose whether the review is shown");
 
-    const review = await db.review.findUnique({ where: { id }, select: { id: true, isPublic: true, technicianId: true } });
+    const adminId = scope.adminId;
+    const review = await db.review.findFirst({ where: { id, technician: storeOnlyWhere(scope) }, select: { id: true, isPublic: true, technicianId: true } });
     if (!review) return fail("not_found", "Review not found");
     if (review.isPublic === parsed.data.isPublic) return ok({ isPublic: review.isPublic });
 

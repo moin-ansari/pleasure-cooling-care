@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteExpense, updateExpense } from "@/lib/domain/finance";
-import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 
 type Context = { params: { id: string } };
 
 export async function PUT(request: NextRequest, { params }: Context) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
-        const result = await updateExpense(params.id, adminId, await request.json());
+        const result = await updateExpense(scope, params.id, await request.json());
         if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: result.code === "not_found" ? 404 : 400 });
 
         return NextResponse.json({ status: "success", message: "Saved", data: result.data });
@@ -21,10 +21,10 @@ export async function PUT(request: NextRequest, { params }: Context) {
 
 export async function DELETE(request: NextRequest, { params }: Context) {
     try {
-        const adminId = await getAdminId(request);
-        if (!adminId) return unauthorizedResponse();
+        const scope = await getAdminScope(request);
+        if (!scope) return unauthorizedResponse();
 
-        const result = await deleteExpense(params.id, adminId);
+        const result = await deleteExpense(scope, params.id);
         if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: 404 });
 
         return NextResponse.json({ status: "success", message: "Deleted" });
