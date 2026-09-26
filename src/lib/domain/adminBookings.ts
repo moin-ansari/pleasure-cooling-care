@@ -10,7 +10,7 @@ import {
     type BookingStatusValue,
 } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
-import { AssignInputSchema, CancelInputSchema, PriceInputSchema } from "@/schema/adminBooking";
+import { AssignInputSchema, BookingEditSchema, CancelInputSchema, NoteInputSchema, PriceInputSchema } from "@/schema/adminBooking";
 import { bookingWhere, canAccessStore, storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
 import { createBooking } from "./bookings";
 import { notifyAssigned, notifyCancelled, notifyPriceChanged } from "./notifications";
@@ -168,6 +168,8 @@ export interface AdminBookingDetail extends AdminBookingListItem {
     canAssign: boolean;
     canCancel: boolean;
     canEditPrice: boolean;
+    canEdit: boolean;
+    canMoveVisit: boolean;
 }
 
 // A booking outside the admin's stores is treated as if it does not exist. A city picked in the switcher does not hide it.
@@ -238,6 +240,8 @@ export async function getBookingDetail(scope: AdminScope, id: string): Promise<A
         canAssign: open,
         canCancel: open,
         canEditPrice: open,
+        canEdit: open,
+        canMoveVisit: b.status === "NEW",
     };
 }
 
@@ -455,6 +459,77 @@ export async function updateBookingPrice(scope: AdminScope, bookingId: string, r
     });
     await notifyPriceChanged(bookingId, booking.price);
 
+    return ok((await getBookingDetail(scope, bookingId))!);
+}
+
+// Fixes typos in the customer's details or moves the requested visit. Not for closed bookings.
+export async function editBookingDetails(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
+    const parsed = BookingEditSchema.safeParse(raw);
+    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
+    const d = parsed.data;
+
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) } });
+    if (!booking) return fail("not_found", "Booking not found");
+    if (!OPEN_STATUSES.includes(booking.status)) return fail("closed", "A closed booking cannot be edited");
+
+    const data: Prisma.BookingUpdateInput = {};
+    const notes: string[] = [];
+    const before: Record<string, unknown> = {};
+    const after: Record<string, unknown> = {};
+    const set = (key: "customerName" | "streetAddress" | "town" | "pincode", label: string) => {
+        if (d[key] !== undefined && d[key] !== booking[key]) {
+            data[key] = d[key];
+            before[key] = booking[key];
+            after[key] = d[key];
+            notes.push(label);
+        }
+    };
+    set("customerName", "name");
+    set("streetAddress", "address");
+    set("town", "town");
+    set("pincode", "pincode");
+
+    if (d.date !== undefined && d.time !== undefined) {
+        // The customer was already promised a confirmed time, so only unconfirmed bookings can move.
+        if (booking.status !== "NEW") return fail("already_confirmed", "This visit is already confirmed. Change the arrival time when you assign the technician.");
+        const newDate = istDateToUtc(d.date);
+        if (Number.isNaN(newDate.getTime())) return fail("invalid", "Choose a valid date");
+        const dayDiff = (newDate.getTime() - istDateToUtc(istDateString()).getTime()) / 86400000;
+        if (dayDiff < 0 || dayDiff > 60) return fail("invalid", "Choose a day from today up to 60 days ahead");
+        if (newDate.getTime() !== booking.date.getTime() || d.time !== booking.time) {
+            data.date = newDate;
+            data.time = d.time;
+            before.visit = `${istDateString(booking.date)} ${booking.time}`;
+            after.visit = `${d.date} ${d.time}`;
+            notes.push(`visit moved to ${d.date}, ${d.time}`);
+        }
+    }
+    if (notes.length === 0) return ok((await getBookingDetail(scope, bookingId))!);
+
+    const changed = await db.$transaction(async (tx) => {
+        const result = await tx.booking.updateMany({ where: { id: bookingId, status: booking.status }, data: data as Prisma.BookingUncheckedUpdateManyInput });
+        if (result.count === 0) return false;
+        await tx.bookingStatusHistory.create({
+            data: { bookingId, fromStatus: booking.status, toStatus: booking.status, changedByType: "admin", changedById: scope.adminId, note: `Edited: ${notes.join(", ")}` },
+        });
+        return true;
+    });
+    if (!changed) return fail("conflict", "This booking was just updated. Please refresh.");
+
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: "booking.edit", entity: "Booking", entityId: bookingId, before, after });
+    return ok((await getBookingDetail(scope, bookingId))!);
+}
+
+// A private note for the team. The customer never sees it.
+export async function addBookingNote(scope: AdminScope, bookingId: string, raw: unknown): Promise<Result<AdminBookingDetail>> {
+    const parsed = NoteInputSchema.safeParse(raw);
+    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
+    const booking = await db.booking.findFirst({ where: { id: bookingId, ...storeOnlyWhere(scope) }, select: { status: true } });
+    if (!booking) return fail("not_found", "Booking not found");
+    await db.bookingStatusHistory.create({
+        data: { bookingId, fromStatus: booking.status, toStatus: booking.status, changedByType: "admin", changedById: scope.adminId, note: `Note: ${parsed.data.note}` },
+    });
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: "booking.note", entity: "Booking", entityId: bookingId, before: {}, after: { note: parsed.data.note } });
     return ok((await getBookingDetail(scope, bookingId))!);
 }
 
