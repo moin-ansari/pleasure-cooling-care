@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
 import { revalidateTag } from "next/cache";
-import { ServiceInputSchema } from "@/schema/service";
-import { deleteService, getService, updateService } from "@/lib/domain/services";
+import { deleteService, getService, patchService, updateService } from "@/lib/domain/services";
 import { getAdminId, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { STOREFRONT_TAG } from "@/lib/storefront";
-import { logAudit } from "@/lib/audit";
 
 type Context = { params: { id: string } };
+
+const statusFor = (code: string) => (code === "not_found" ? 404 : code === "duplicate" || code === "in_use" ? 409 : 400);
 
 export async function GET(request: NextRequest, { params }: Context) {
     try {
         if (!(await getAdminId(request))) return unauthorizedResponse();
 
         const service = await getService(params.id);
-        if (!service) return NextResponse.json({ status: "error", message: "Service not found" });
+        if (!service) return NextResponse.json({ status: "error", message: "Service not found" }, { status: 404 });
 
         return NextResponse.json({ status: "success", data: service });
     } catch (error: any) {
-        return NextResponse.json({ status: "error", message: error.message });
+        console.error("service get failed", error);
+        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
 
@@ -27,24 +27,31 @@ export async function PUT(request: NextRequest, { params }: Context) {
         const adminId = await getAdminId(request);
         if (!adminId) return unauthorizedResponse();
 
-        const parsed = ServiceInputSchema.safeParse(await request.json());
-        if (!parsed.success) {
-            return NextResponse.json({ status: "error", message: parsed.error.issues[0].message });
-        }
+        const result = await updateService(params.id, adminId, await request.json());
+        if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: statusFor(result.code) });
 
-        const before = await getService(params.id);
-        if (!before) return NextResponse.json({ status: "error", message: "Service not found" });
-
-        const service = await updateService(params.id, parsed.data);
         revalidateTag(STOREFRONT_TAG);
-        await logAudit({ actorType: "admin", actorId: adminId, action: "service.update", entity: "Service", entityId: service.id, before, after: service });
-
-        return NextResponse.json({ status: "success", message: "Service updated", data: service });
+        return NextResponse.json({ status: "success", message: "Service updated", data: result.data });
     } catch (error: any) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-            return NextResponse.json({ status: "error", message: "This service already exists for that appliance and type" });
-        }
-        return NextResponse.json({ status: "error", message: error.message });
+        console.error("service update failed", error);
+        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
+    }
+}
+
+// Quick edit: price, guarantee days or visibility.
+export async function PATCH(request: NextRequest, { params }: Context) {
+    try {
+        const adminId = await getAdminId(request);
+        if (!adminId) return unauthorizedResponse();
+
+        const result = await patchService(params.id, adminId, await request.json());
+        if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: statusFor(result.code) });
+
+        revalidateTag(STOREFRONT_TAG);
+        return NextResponse.json({ status: "success", message: "Saved", data: result.data });
+    } catch (error: any) {
+        console.error("service patch failed", error);
+        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
 
@@ -53,15 +60,13 @@ export async function DELETE(request: NextRequest, { params }: Context) {
         const adminId = await getAdminId(request);
         if (!adminId) return unauthorizedResponse();
 
-        const before = await getService(params.id);
-        if (!before) return NextResponse.json({ status: "error", message: "Service not found" });
+        const result = await deleteService(params.id, adminId);
+        if (!result.ok) return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: statusFor(result.code) });
 
-        await deleteService(params.id);
         revalidateTag(STOREFRONT_TAG);
-        await logAudit({ actorType: "admin", actorId: adminId, action: "service.delete", entity: "Service", entityId: params.id, before });
-
         return NextResponse.json({ status: "success", message: "Service deleted" });
     } catch (error: any) {
-        return NextResponse.json({ status: "error", message: error.message });
+        console.error("service delete failed", error);
+        return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
