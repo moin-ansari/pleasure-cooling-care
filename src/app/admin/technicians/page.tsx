@@ -3,18 +3,25 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState, ListSkeleton, PageTitle, RowCard } from "@/components/custom/admin/ui";
+import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { TechnicianListItem } from "@/lib/domain/technicians";
 
 const RANK_STYLE: Record<TechnicianListItem["rank"], string> = {
-  BRONZE: "bg-amber-700",
-  SILVER: "bg-slate-500",
-  GOLD: "bg-yellow-500",
-  DIAMOND: "bg-cyan-600",
+  BRONZE: "bg-amber-100 text-amber-900",
+  SILVER: "bg-slate-200 text-slate-800",
+  GOLD: "bg-yellow-100 text-yellow-900",
+  DIAMOND: "bg-cyan-100 text-cyan-900",
 };
+const RANK_LABEL: Record<TechnicianListItem["rank"], string> = { BRONZE: "Bronze", SILVER: "Silver", GOLD: "Gold", DIAMOND: "Diamond" };
+
+function StatusPill({ t }: { t: TechnicianListItem }) {
+  const [label, cls] = t.isLocked ? ["Locked", "bg-red-100 text-red-800"] : t.isActive ? ["Active", "bg-emerald-100 text-emerald-800"] : ["Inactive", "bg-slate-200 text-slate-700"];
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>{label}</span>;
+}
 
 export default function TechniciansPage() {
   const router = useRouter();
@@ -28,61 +35,88 @@ export default function TechniciansPage() {
   }, []);
 
   return (
-    <div className="p-3 w-full">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-xl font-semibold">Technicians</h1>
-        <Button asChild>
-          <Link href="/admin/technicians/new">Add technician</Link>
-        </Button>
-      </div>
+    <div>
+      <PageTitle
+        title="Team"
+        sub={technicians ? `${technicians.filter((t) => t.isActive).length} active technicians` : undefined}
+        action={
+          <Button asChild size="sm">
+            <Link href="/admin/technicians/new">
+              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Add
+            </Link>
+          </Button>
+        }
+      />
 
-      <Card>
-        <CardContent className="overflow-x-auto">
-          {technicians === null ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">Loading...</div>
-          ) : technicians.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">No technicians yet. Add the first one.</div>
-          ) : (
-            <Table>
+      {technicians === null ? (
+        <ListSkeleton />
+      ) : technicians.length === 0 ? (
+        <EmptyState title="No technicians yet" text="Add the first technician to start assigning jobs." />
+      ) : (
+        <>
+          <div className="grid gap-2 md:grid-cols-2 lg:hidden">
+            {technicians.map((t) => (
+              <RowCard key={t.id} href={`/admin/technicians/${t.id}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{t.name}</p>
+                    <p className="text-xs text-slate-500">{t.phone}</p>
+                  </div>
+                  <StatusPill t={t} />
+                </div>
+                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+                  <span className={`rounded px-1.5 py-0.5 font-medium ${RANK_STYLE[t.rank]}`}>{RANK_LABEL[t.rank]}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Star className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" />
+                    {t.ratingCount > 0 ? `${t.averageRating.toFixed(1)} (${t.ratingCount})` : "No ratings"}
+                  </span>
+                  <span>{t.jobsCompletedCount} done</span>
+                  <span className={t.activeJobs > 0 ? "font-medium text-amber-700" : ""}>{t.activeJobs > 0 ? `${t.activeJobs} open` : "Free"}</span>
+                </div>
+                <p className="mt-1 truncate text-xs text-slate-500">
+                  {t.specializations.map((c) => CATEGORY_LABELS[c]).join(", ") || "No appliances set"} · {t.districts.join(", ") || "No district"}
+                </p>
+              </RowCard>
+            ))}
+          </div>
+
+          <div className="hidden rounded-xl border bg-white shadow-sm lg:block">
+            <Table className="table-fixed">
               <TableHeader>
-                <TableRow className="bg-accent">
-                  <TableHead className="p-2">Technician</TableHead>
-                  <TableHead className="p-2">Rank</TableHead>
-                  <TableHead className="p-2 text-right">Active jobs</TableHead>
-                  <TableHead className="p-2 text-right">Completed</TableHead>
-                  <TableHead className="p-2 text-right">Rating</TableHead>
-                  <TableHead className="p-2">Districts</TableHead>
-                  <TableHead className="p-2">Status</TableHead>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="w-[22%] p-2">Technician</TableHead>
+                  <TableHead className="w-[10%] p-2">Rank</TableHead>
+                  <TableHead className="w-[10%] p-2 text-right">Open jobs</TableHead>
+                  <TableHead className="w-[10%] p-2 text-right">Completed</TableHead>
+                  <TableHead className="w-[10%] p-2 text-right">Rating</TableHead>
+                  <TableHead className="w-[26%] p-2">Districts</TableHead>
+                  <TableHead className="w-[12%] p-2">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {technicians.map((t) => (
                   <TableRow key={t.id} className="cursor-pointer" onClick={() => router.push(`/admin/technicians/${t.id}`)}>
                     <TableCell className="p-2">
-                      <div className="font-medium">{t.name}</div>
+                      <div className="truncate font-medium">{t.name}</div>
                       <div className="text-xs text-muted-foreground">{t.phone}</div>
                     </TableCell>
                     <TableCell className="p-2">
-                      <Badge className={RANK_STYLE[t.rank]}>{t.rank}</Badge>
+                      <span className={`rounded px-1.5 py-0.5 text-xs font-medium ${RANK_STYLE[t.rank]}`}>{RANK_LABEL[t.rank]}</span>
                     </TableCell>
                     <TableCell className="p-2 text-right">{t.activeJobs}</TableCell>
                     <TableCell className="p-2 text-right">{t.jobsCompletedCount}</TableCell>
                     <TableCell className="p-2 text-right">{t.ratingCount > 0 ? t.averageRating.toFixed(1) : "-"}</TableCell>
-                    <TableCell className="p-2">{t.districts.join(", ") || "-"}</TableCell>
+                    <TableCell className="truncate p-2">{t.districts.join(", ") || "-"}</TableCell>
                     <TableCell className="p-2">
-                      {t.isLocked ? (
-                        <Badge className="bg-red-600">Locked</Badge>
-                      ) : (
-                        <Badge className={t.isActive ? "bg-green-600" : "bg-gray-400"}>{t.isActive ? "Active" : "Inactive"}</Badge>
-                      )}
+                      <StatusPill t={t} />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

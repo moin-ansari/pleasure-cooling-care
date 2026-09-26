@@ -58,7 +58,7 @@ export default function ReviewsPage() {
   };
 
   return (
-    <div className="p-3 w-full max-w-3xl mx-auto grid gap-4">
+    <div className="mx-auto grid w-full max-w-3xl gap-3">
       <div>
         <h1 className="text-xl font-semibold">Reviews</h1>
         <p className="text-sm text-muted-foreground">Reviews are shown on the website straight away. Hide one if it is abusive or not genuine. Hidden reviews do not count towards a technician&apos;s rating.</p>

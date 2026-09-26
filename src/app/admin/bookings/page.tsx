@@ -2,22 +2,17 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
+import BookingCard from "@/components/custom/admin/BookingCard";
+import { Chips, EmptyState, ListSkeleton, PageTitle } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { BOOKING_GROUPS, BOOKING_GROUP_LABELS, type BookingGroup } from "@/constants/booking";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { AdminBookingList } from "@/lib/domain/adminBookings";
-
-function waited(iso: string): string {
-  const minutes = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-  if (minutes < 60) return `${minutes} min`;
-  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)} h`;
-  return `${Math.floor(minutes / 1440)} d`;
-}
 
 export default function BookingsPage() {
   const router = useRouter();
@@ -38,6 +33,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    setData(null);
     const params = new URLSearchParams({ group, page: String(page), ...(search ? { q: search } : {}) });
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
@@ -58,80 +54,75 @@ export default function BookingsPage() {
   };
 
   return (
-    <div className="p-3 w-full">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-        <h1 className="text-xl font-semibold">Bookings</h1>
-        <div className="w-full sm:w-72">
-          <label htmlFor="booking-search" className="sr-only">
-            Search bookings
-          </label>
-          <Input id="booking-search" placeholder="Search name, phone or reference" value={query} onChange={(e) => setQuery(e.target.value)} />
-        </div>
+    <div>
+      <PageTitle title="Bookings" sub={data ? `${data.total} ${BOOKING_GROUP_LABELS[group].toLowerCase()}` : undefined} />
+
+      <div className="relative mb-2">
+        <label htmlFor="booking-search" className="sr-only">
+          Search bookings
+        </label>
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        <Input id="booking-search" className="h-11 bg-white pl-9" placeholder="Search name, phone or reference" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
-      <div role="tablist" aria-label="Booking status" className="flex flex-wrap gap-2 mb-3">
-        {BOOKING_GROUPS.map((g) => (
-          <Button key={g} role="tab" aria-selected={group === g} size="sm" variant={group === g ? "default" : "outline"} onClick={() => pick(g)}>
-            {BOOKING_GROUP_LABELS[g]}
-            {data && <span className="ml-1.5 opacity-80">({data.counts[g]})</span>}
-          </Button>
-        ))}
+      <div className="mb-3">
+        <Chips
+          label="Booking status"
+          value={group}
+          onChange={pick}
+          options={BOOKING_GROUPS.map((g) => ({ key: g, label: BOOKING_GROUP_LABELS[g], count: data?.counts[g] }))}
+        />
       </div>
 
-      <Card>
-        <CardContent className="overflow-x-auto">
-          {data === null ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">Loading...</div>
-          ) : data.items.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">
-              {search ? "No bookings match your search." : "Nothing here yet."}
-            </div>
-          ) : (
-            <Table>
+      {data === null ? (
+        <ListSkeleton />
+      ) : data.items.length === 0 ? (
+        <EmptyState title={search ? "No bookings match your search" : "Nothing here yet"} />
+      ) : (
+        <>
+          {/* Phone and tablet: one card per booking, earliest visit first. */}
+          <div className="grid gap-2 md:grid-cols-2 lg:hidden">
+            {data.items.map((b) => (
+              <BookingCard key={b.id} b={b} />
+            ))}
+          </div>
+
+          {/* Large screens: a table. */}
+          <div className="hidden rounded-xl border bg-white shadow-sm lg:block">
+            <Table className="table-fixed">
               <TableHeader>
-                <TableRow className="bg-accent">
-                  <TableHead className="p-2">Booking</TableHead>
-                  <TableHead className="p-2">Customer</TableHead>
-                  <TableHead className="p-2">Service</TableHead>
-                  <TableHead className="p-2">When</TableHead>
-                  <TableHead className="p-2">Area</TableHead>
-                  <TableHead className="p-2">Technician</TableHead>
-                  <TableHead className="p-2 text-right">Price</TableHead>
-                  <TableHead className="p-2">Status</TableHead>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="w-[12%] p-2">When</TableHead>
+                  <TableHead className="w-[18%] p-2">Customer</TableHead>
+                  <TableHead className="w-[20%] p-2">Service</TableHead>
+                  <TableHead className="w-[16%] p-2">Area</TableHead>
+                  <TableHead className="w-[14%] p-2">Technician</TableHead>
+                  <TableHead className="w-[8%] p-2 text-right">Price</TableHead>
+                  <TableHead className="w-[12%] p-2">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.items.map((b) => (
-                  <TableRow
-                    key={b.id}
-                    className={`cursor-pointer ${b.isStale ? "bg-red-50 hover:bg-red-100" : ""}`}
-                    onClick={() => router.push(`/admin/bookings/${b.id}`)}
-                  >
+                  <TableRow key={b.id} className={`cursor-pointer ${b.isStale ? "bg-red-50 hover:bg-red-100" : ""}`} onClick={() => router.push(`/admin/bookings/${b.id}`)}>
                     <TableCell className="p-2">
-                      <div className="font-mono text-xs">{b.bookingRef}</div>
-                      <div className={`text-xs ${b.isStale ? "font-semibold text-red-700" : "text-muted-foreground"}`}>
-                        {b.status === "NEW" ? `Waiting ${waited(b.createdAt)}` : `${waited(b.createdAt)} ago`}
-                      </div>
-                    </TableCell>
-                    <TableCell className="p-2">
-                      <div className="font-medium">{b.customerName}</div>
-                      <div className="text-xs text-muted-foreground">{b.mobile}</div>
-                    </TableCell>
-                    <TableCell className="p-2">
-                      <div>{b.serviceType}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {CATEGORY_LABELS[b.applianceCategory]}, {b.applianceSubType}
-                      </div>
-                    </TableCell>
-                    <TableCell className="p-2 whitespace-nowrap">
-                      {friendlyDay(b.date)}
+                      <div className="font-medium">{friendlyDay(b.date)}</div>
                       <div className="text-xs text-muted-foreground">{b.time}</div>
                     </TableCell>
                     <TableCell className="p-2">
-                      {b.town}
+                      <div className="truncate font-medium">{b.customerName}</div>
+                      <div className="text-xs text-muted-foreground">{b.mobile}</div>
+                    </TableCell>
+                    <TableCell className="p-2">
+                      <div className="truncate">{b.serviceType}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {CATEGORY_LABELS[b.applianceCategory]}, {b.applianceSubType}
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-2">
+                      <div className="truncate">{b.town}</div>
                       <div className="text-xs text-muted-foreground">{b.district}</div>
                     </TableCell>
-                    <TableCell className="p-2">{b.technicianName ?? <span className="text-muted-foreground">Not assigned</span>}</TableCell>
+                    <TableCell className="truncate p-2">{b.technicianName ?? <span className="text-amber-700">Not assigned</span>}</TableCell>
                     <TableCell className="p-2 text-right">₹{b.price}</TableCell>
                     <TableCell className="p-2">
                       <AdminStatusBadge status={b.status} />
@@ -140,12 +131,12 @@ export default function BookingsPage() {
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </>
+      )}
 
       {data && data.pageCount > 1 && (
-        <div className="flex items-center justify-center gap-3 mt-4">
+        <div className="mt-4 flex items-center justify-center gap-3">
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
             Previous
           </Button>

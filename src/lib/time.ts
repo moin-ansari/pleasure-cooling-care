@@ -37,10 +37,10 @@ export function addDaysToDateString(dateString: string, days: number): string {
 
 // "02:00 PM" -> 840
 export function slotToMinutes(slot: string): number {
-    const match = /^(\d{1,2}):(\d{2}) (AM|PM)$/.exec(slot);
+    const match = /^(\d{1,2}):(\d{2})\s(AM|PM)$/i.exec(slot.trim());
     if (!match) return -1;
     let hour = Number(match[1]) % 12;
-    if (match[3] === "PM") hour += 12;
+    if (match[3].toUpperCase() === "PM") hour += 12;
     return hour * 60 + Number(match[2]);
 }
 

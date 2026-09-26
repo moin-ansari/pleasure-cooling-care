@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Form,
   FormControl,
@@ -26,6 +26,10 @@ const Login = () => {
 
   const router = useRouter()
   const [btnLoading, setBtnLoading] = useState(false)
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("expired")) toast("Your session ended. Please log in again.");
+  }, []);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),

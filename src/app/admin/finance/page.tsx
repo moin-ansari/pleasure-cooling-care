@@ -1,56 +1,30 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { Banknote, Megaphone, PiggyBank, Receipt, TrendingUp, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import RangeSelector, { rangeQuery, type RangeValue } from "@/components/custom/admin/RangeSelector";
+import { EmptyState, ListSkeleton, PageTitle, Panel, RowCard, StatTile } from "@/components/custom/admin/ui";
 import { istDateString } from "@/lib/time";
 import { rupees } from "@/lib/money";
 import type { FinanceSummary } from "@/lib/domain/finance";
 
-interface Loaded {
-  summary: FinanceSummary;
-  commission: { ratePercent: number; flatAmount: number };
-}
-
-function Stat({ title, value, note, tone }: { title: string; value: React.ReactNode; note?: React.ReactNode; tone?: "good" | "bad" }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold tracking-wide">{title}</CardTitle>
-      </CardHeader>
-      <CardContent className="px-6 pb-5">
-        <div className={`text-2xl font-bold ${tone === "good" ? "text-green-700" : tone === "bad" ? "text-red-700" : ""}`}>{value}</div>
-        {note && <p className="text-xs text-muted-foreground mt-1">{note}</p>}
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function FinancePage() {
-  const router = useRouter();
   const today = istDateString();
   const [range, setRange] = useState<RangeValue>({ preset: "this_month", from: today, to: today });
-  const [data, setData] = useState<Loaded | null>(null);
-  const [rate, setRate] = useState("");
-  const [flat, setFlat] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [summary, setSummary] = useState<FinanceSummary | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setSummary(null);
     fetch(`/api/admin/finance/summary?${rangeQuery(range)}`)
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;
-        if (json.status === "success") {
-          setData({ summary: json.data.summary, commission: json.data.commission });
-          setRate((r) => r || String(json.data.commission.ratePercent));
-          setFlat((f) => f || String(json.data.commission.flatAmount));
-        } else toast.error(json.message || "Could not load finance");
+        if (json.status === "success") setSummary(json.data.summary);
+        else toast.error(json.message || "Could not load finance");
       })
       .catch(() => !cancelled && toast.error("Could not load finance"));
     return () => {
@@ -58,118 +32,99 @@ export default function FinancePage() {
     };
   }, [range]);
 
-  const saveCommission = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const res = await fetch("/api/admin/finance/commission", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ commissionRatePercent: Number(rate), commissionFlatAmount: Number(flat) }),
-      });
-      const json = await res.json();
-      if (json.status === "success") {
-        toast.success(json.message);
-        setData((d) => (d ? { ...d, commission: json.data } : d));
-      } else toast.error(json.message || "Could not save");
-    } catch {
-      toast.error("Could not save");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (!data) return <div className="p-3 h-[300px] flex items-center justify-center text-muted-foreground">Loading...</div>;
-  const s = data.summary;
-
   return (
-    <div className="p-3 w-full max-w-6xl mx-auto grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">Finance</h1>
-        <Button asChild variant="outline">
-          <Link href="/admin/finance/expenses">Expenses and ad spend</Link>
-        </Button>
+    <div>
+      <PageTitle
+        title="Money"
+        action={
+          <Button asChild size="sm" variant="outline">
+            <Link href="/admin/finance/expenses">Expenses</Link>
+          </Button>
+        }
+      />
+
+      <div className="mb-3">
+        <RangeSelector value={range} onChange={setRange} />
       </div>
 
-      <RangeSelector value={range} onChange={setRange} />
+      {!summary ? (
+        <ListSkeleton rows={4} />
+      ) : (
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+            <StatTile label="Profit" value={rupees(summary.profit)} note="Commission − expenses − ads" Icon={PiggyBank} tone={summary.profit >= 0 ? "green" : "red"} />
+            <StatTile label="Your commission" value={rupees(summary.commissionEarned)} note="From technicians' jobs" Icon={TrendingUp} tone="blue" />
+            <StatTile label="Owed to you" value={rupees(summary.outstandingCommission)} note="Technicians still to pay in" Icon={Wallet} tone={summary.outstandingCommission > 0 ? "amber" : "slate"} />
+            <StatTile label="Cash collected" value={rupees(summary.sales.collected)} note={`${summary.sales.jobs} jobs · parts ${rupees(summary.sales.parts)}`} Icon={Banknote} />
+            <StatTile label="Expenses" value={rupees(summary.expenses)} Icon={Receipt} href="/admin/finance/expenses" />
+            <StatTile
+              label="Ad spend"
+              value={rupees(summary.adSpend)}
+              note={summary.ads.costPerAdBooking !== null ? `${rupees(summary.ads.costPerAdBooking)} per ad booking · ${summary.ads.bookingsFromAds}/${summary.ads.totalBookings} from ads` : `${summary.ads.bookingsFromAds}/${summary.ads.totalBookings} bookings from ads`}
+              Icon={Megaphone}
+              href="/admin/finance/expenses"
+            />
+          </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat title="Sales (cash collected)" value={rupees(s.sales.collected)} note={`${s.sales.jobs} completed jobs. Service ${rupees(s.sales.labor)}, parts ${rupees(s.sales.parts)}`} />
-        <Stat title="Your commission" value={rupees(s.commissionEarned)} note="Earned from technicians' jobs" />
-        <Stat title="Expenses + ad spend" value={rupees(s.expenses + s.adSpend)} note={`Expenses ${rupees(s.expenses)}, ads ${rupees(s.adSpend)}`} />
-        <Stat title="Profit" value={rupees(s.profit)} note="Commission minus expenses and ad spend" tone={s.profit >= 0 ? "good" : "bad"} />
-      </div>
+          <Panel title="By technician">
+            {summary.technicians.length === 0 ? (
+              <EmptyState title="Nothing in this period" text="Completed jobs and payments will show here." />
+            ) : (
+              <>
+                <div className="grid gap-2 lg:hidden">
+                  {summary.technicians.map((t) => (
+                    <RowCard key={t.technicianId} href={`/admin/finance/technicians/${t.technicianId}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="truncate font-semibold text-slate-900">{t.name}</p>
+                        <p className={`shrink-0 text-sm font-bold ${t.balance > 0 ? "text-red-700" : "text-slate-700"}`}>{t.balance > 0 ? `Owes ${rupees(t.balance)}` : rupees(t.balance)}</p>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {t.jobs} jobs · collected {rupees(t.collected)} · your commission {rupees(t.commission)}
+                      </p>
+                    </RowCard>
+                  ))}
+                </div>
+                <div className="hidden lg:block">
+                  <Table className="table-fixed">
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead className="w-[30%] p-2">Technician</TableHead>
+                        <TableHead className="w-[10%] p-2 text-right">Jobs</TableHead>
+                        <TableHead className="w-[20%] p-2 text-right">Cash collected</TableHead>
+                        <TableHead className="w-[20%] p-2 text-right">Your commission</TableHead>
+                        <TableHead className="w-[20%] p-2 text-right">Owes you now</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {summary.technicians.map((t) => (
+                        <TableRow key={t.technicianId}>
+                          <TableCell className="p-2 font-medium">
+                            <Link href={`/admin/finance/technicians/${t.technicianId}`} className="hover:underline">
+                              {t.name}
+                            </Link>
+                          </TableCell>
+                          <TableCell className="p-2 text-right">{t.jobs}</TableCell>
+                          <TableCell className="p-2 text-right">{rupees(t.collected)}</TableCell>
+                          <TableCell className="p-2 text-right">{rupees(t.commission)}</TableCell>
+                          <TableCell className={`p-2 text-right font-medium ${t.balance > 0 ? "text-red-700" : ""}`}>{rupees(t.balance)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </>
+            )}
+          </Panel>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat title="Owed to you now" value={rupees(s.outstandingCommission)} note="Commission technicians still have to pay in (all time)" tone={s.outstandingCommission > 0 ? "bad" : undefined} />
-        <Stat
-          title="Bookings from ads"
-          value={`${s.ads.bookingsFromAds} of ${s.ads.totalBookings}`}
-          note={s.ads.costPerAdBooking !== null ? `${rupees(s.ads.costPerAdBooking)} ad spend per ad booking` : "Tagged with a campaign link"}
-        />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">By technician</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          {s.technicians.length === 0 ? (
-            <p className="p-6 text-center text-muted-foreground">No completed jobs or ledger entries in this period.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-accent">
-                  <TableHead className="p-2">Technician</TableHead>
-                  <TableHead className="p-2 text-right">Jobs</TableHead>
-                  <TableHead className="p-2 text-right">Cash collected</TableHead>
-                  <TableHead className="p-2 text-right">Your commission</TableHead>
-                  <TableHead className="p-2 text-right">Owes you now</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {s.technicians.map((t) => (
-                  <TableRow key={t.technicianId} className="cursor-pointer" onClick={() => router.push(`/admin/finance/technicians/${t.technicianId}`)}>
-                    <TableCell className="p-2 font-medium">{t.name}</TableCell>
-                    <TableCell className="p-2 text-right">{t.jobs}</TableCell>
-                    <TableCell className="p-2 text-right">{rupees(t.collected)}</TableCell>
-                    <TableCell className="p-2 text-right">{rupees(t.commission)}</TableCell>
-                    <TableCell className={`p-2 text-right font-medium ${t.balance > 0 ? "text-red-700" : ""}`}>{rupees(t.balance)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Commission</CardTitle>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <form onSubmit={saveCommission} className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5">
-              <label htmlFor="rate" className="text-sm font-medium">
-                Percentage of the service charge
-              </label>
-              <Input id="rate" type="number" step="0.01" min={0} max={100} value={rate} onChange={(e) => setRate(e.target.value)} className="w-40" />
-            </div>
-            <div className="grid gap-1.5">
-              <label htmlFor="flat" className="text-sm font-medium">
-                Flat amount per job (₹)
-              </label>
-              <Input id="flat" type="number" step="0.01" min={0} value={flat} onChange={(e) => setFlat(e.target.value)} className="w-40" />
-            </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving..." : "Save"}
-            </Button>
-          </form>
-          <p className="text-xs text-muted-foreground mt-3">
-            Applies to jobs completed from now on. Jobs already completed keep the terms they were completed under. Free guarantee re-services earn no commission. Parts are never charged commission.
+          <p className="text-xs text-slate-500">
+            Commission rate and flat amount are in{" "}
+            <Link href="/admin/settings" className="text-blue-700 underline">
+              Settings
+            </Link>
+            .
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }

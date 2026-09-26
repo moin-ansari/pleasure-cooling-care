@@ -3,87 +3,115 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import { Plus, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Chips, EmptyState, ListSkeleton, PageTitle, RowCard } from "@/components/custom/admin/ui";
 import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, type ApplianceCategoryValue } from "@/constants/appliances";
 import type { ServiceItem } from "@/types/service";
+
+type Filter = ApplianceCategoryValue | "ALL";
+
+function StatusPill({ active }: { active: boolean }) {
+  return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${active ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>{active ? "Active" : "Hidden"}</span>;
+}
 
 export default function ServicesPage() {
   const router = useRouter();
   const [services, setServices] = useState<ServiceItem[] | null>(null);
-  const [filter, setFilter] = useState<ApplianceCategoryValue | "ALL">("ALL");
+  const [filter, setFilter] = useState<Filter>("ALL");
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/services?all=true");
-        const json = await res.json();
-        if (json.status === "success") setServices(json.data);
-        else toast.error(json.message || "Could not load services");
-      } catch {
-        toast.error("Could not load services");
-      }
-    };
-    load();
+    fetch("/api/services?all=true")
+      .then((r) => r.json())
+      .then((json) => (json.status === "success" ? setServices(json.data) : toast.error(json.message || "Could not load services")))
+      .catch(() => toast.error("Could not load services"));
   }, []);
 
   const visible = (services ?? []).filter((s) => filter === "ALL" || s.applianceCategory === filter);
 
   return (
-    <div className="p-3 w-full">
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h1 className="text-xl font-semibold">Services</h1>
-        <Button asChild>
-          <Link href="/admin/services/new">Add service</Link>
-        </Button>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        {(["ALL", ...APPLIANCE_CATEGORIES] as const).map((c) => (
-          <Button key={c} size="sm" variant={filter === c ? "default" : "outline"} onClick={() => setFilter(c)}>
-            {c === "ALL" ? "All" : CATEGORY_LABELS[c]}
+    <div>
+      <PageTitle
+        title="Services"
+        sub={services ? `${services.length} services · ${services.filter((s) => s.isActive).length} shown to customers` : undefined}
+        action={
+          <Button asChild size="sm">
+            <Link href="/admin/services/new">
+              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> Add
+            </Link>
           </Button>
-        ))}
+        }
+      />
+
+      <div className="mb-3">
+        <Chips<Filter>
+          label="Appliance"
+          value={filter}
+          onChange={setFilter}
+          options={[{ key: "ALL", label: "All" }, ...APPLIANCE_CATEGORIES.map((c) => ({ key: c as Filter, label: CATEGORY_LABELS[c] }))]}
+        />
       </div>
 
-      <Card>
-        <CardContent>
-          {services === null ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">Loading...</div>
-          ) : visible.length === 0 ? (
-            <div className="h-40 flex items-center justify-center text-muted-foreground">No services yet.</div>
-          ) : (
-            <Table>
+      {services === null ? (
+        <ListSkeleton />
+      ) : visible.length === 0 ? (
+        <EmptyState title="No services here yet" />
+      ) : (
+        <>
+          <div className="grid gap-2 md:grid-cols-2 lg:hidden">
+            {visible.map((s) => (
+              <RowCard key={s.id} href={`/admin/services/${s.id}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-slate-900">{s.serviceType}</p>
+                    <p className="truncate text-xs text-slate-500">
+                      {CATEGORY_LABELS[s.applianceCategory]}, {s.applianceSubType}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-base font-bold text-blue-800">₹{s.price}</p>
+                </div>
+                <div className="mt-1.5 flex items-center justify-between text-xs text-slate-600">
+                  <span className="inline-flex items-center gap-1">
+                    <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    {s.warrantyDurationDays ? `${s.warrantyDurationDays}-day guarantee` : "No guarantee"}
+                  </span>
+                  <StatusPill active={s.isActive} />
+                </div>
+              </RowCard>
+            ))}
+          </div>
+
+          <div className="hidden rounded-xl border bg-white shadow-sm lg:block">
+            <Table className="table-fixed">
               <TableHeader>
-                <TableRow className="bg-accent">
-                  <TableHead className="p-2">Service</TableHead>
-                  <TableHead className="p-2">Appliance</TableHead>
-                  <TableHead className="p-2 text-right">Price</TableHead>
-                  <TableHead className="p-2 text-right">Guarantee</TableHead>
-                  <TableHead className="p-2">Status</TableHead>
+                <TableRow className="bg-slate-50">
+                  <TableHead className="w-[30%] p-2">Service</TableHead>
+                  <TableHead className="w-[30%] p-2">Appliance</TableHead>
+                  <TableHead className="w-[12%] p-2 text-right">Price</TableHead>
+                  <TableHead className="w-[16%] p-2 text-right">Guarantee</TableHead>
+                  <TableHead className="w-[12%] p-2">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {visible.map((s) => (
                   <TableRow key={s.id} className="cursor-pointer" onClick={() => router.push(`/admin/services/${s.id}`)}>
-                    <TableCell className="p-2">{s.serviceType}</TableCell>
-                    <TableCell className="p-2">
+                    <TableCell className="truncate p-2 font-medium">{s.serviceType}</TableCell>
+                    <TableCell className="truncate p-2">
                       {CATEGORY_LABELS[s.applianceCategory]}, {s.applianceSubType}
                     </TableCell>
                     <TableCell className="p-2 text-right">₹{s.price}</TableCell>
                     <TableCell className="p-2 text-right">{s.warrantyDurationDays ? `${s.warrantyDurationDays} days` : "None"}</TableCell>
                     <TableCell className="p-2">
-                      <Badge className={s.isActive ? "bg-green-600" : "bg-gray-400"}>{s.isActive ? "Active" : "Hidden"}</Badge>
+                      <StatusPill active={s.isActive} />
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

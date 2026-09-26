@@ -102,12 +102,12 @@ export default function ServiceForm({ service }: { service?: ServiceItem }) {
   };
 
   return (
-    <div className="p-3 max-w-2xl mx-auto">
+    <div className="mx-auto max-w-2xl">
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 pb-1">
           <CardTitle className="text-lg">{service ? "Edit service" : "Add service"}</CardTitle>
         </CardHeader>
-        <CardContent className="px-6 pb-6">
+        <CardContent className="px-3 pb-3">
           <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Appliance" error={errors.applianceCategory?.message}>

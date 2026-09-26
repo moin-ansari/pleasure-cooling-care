@@ -170,7 +170,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
   };
 
   return (
-    <div className="p-3 max-w-6xl mx-auto grid gap-4">
+    <div className="grid gap-3">
       <Link href="/admin/bookings" className="inline-flex items-center gap-1 text-sm text-blue-700">
         <MdArrowBack className="h-5 w-5" aria-hidden="true" /> Bookings
       </Link>
@@ -188,13 +188,13 @@ export default function BookingPage({ params }: { params: { id: string } }) {
         <p className="rounded-md border border-gray-300 bg-gray-50 p-3 text-sm">Cancelled: {booking.cancelReason}</p>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="grid gap-4 lg:col-span-2 content-start">
+      <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 lg:col-span-2 content-start">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-3 pb-1">
               <CardTitle className="text-base">Customer</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 px-6 pb-6">
+            <CardContent className="grid gap-3 px-3 pb-3">
               <div>
                 <p className="font-medium">{booking.customerName}</p>
                 <p className="text-sm text-muted-foreground">{booking.mobile}</p>
@@ -231,10 +231,10 @@ export default function BookingPage({ params }: { params: { id: string } }) {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="p-3 pb-1">
               <CardTitle className="text-base">Service and price</CardTitle>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-3 pb-3">
               <dl>
                 <Row label="Service">
                   {booking.serviceType}
@@ -364,10 +364,10 @@ export default function BookingPage({ params }: { params: { id: string } }) {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="p-3 pb-1">
               <CardTitle className="text-base">History</CardTitle>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-3 pb-3">
               <ol className="grid gap-3">
                 {[...booking.history].reverse().map((h) => (
                   <li key={h.id} className="border-l-2 border-blue-200 pl-3 text-sm">
@@ -387,10 +387,10 @@ export default function BookingPage({ params }: { params: { id: string } }) {
 
         <div className="grid gap-4 content-start">
           <Card>
-            <CardHeader>
+            <CardHeader className="p-3 pb-1">
               <CardTitle className="text-base">Technician</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-3 px-6 pb-6">
+            <CardContent className="grid gap-3 px-3 pb-3">
               {booking.technician ? (
                 <div className="text-sm">
                   <p className="font-medium">{booking.technician.name}</p>

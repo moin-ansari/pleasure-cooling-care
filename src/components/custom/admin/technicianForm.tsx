@@ -166,7 +166,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
   };
 
   return (
-    <form onSubmit={save} className="p-3 max-w-3xl mx-auto grid gap-4">
+    <form onSubmit={save} className="mx-auto grid max-w-3xl gap-3">
       <h1 className="text-xl font-semibold">{technician ? technician.name : "Add technician"}</h1>
 
       {technician && (
@@ -181,10 +181,10 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 pb-1">
           <CardTitle className="text-base">Personal details</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
+        <CardContent className="grid gap-4 px-3 pb-3 sm:grid-cols-2">
           <Field id="t-name" label="Full name">
             <Input id="t-name" {...bind("name")} />
           </Field>
@@ -222,10 +222,10 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 pb-1">
           <CardTitle className="text-base">Login and work</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 px-6 pb-6">
+        <CardContent className="grid gap-4 px-3 pb-3">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="t-email" label="Work email" hint="The technician logs in with this email and a PIN.">
               <Input id="t-email" type="email" autoComplete="off" {...bind("workEmail")} />
@@ -293,10 +293,10 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="p-3 pb-1">
           <CardTitle className="text-base">Bank and ID (optional)</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 px-6 pb-6 sm:grid-cols-2">
+        <CardContent className="grid gap-4 px-3 pb-3 sm:grid-cols-2">
           <Field id="t-holder" label="Account holder name">
             <Input id="t-holder" {...bind("accountHolderName")} />
           </Field>

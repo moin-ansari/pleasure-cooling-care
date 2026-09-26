@@ -202,7 +202,7 @@ export default function WarrantyPage() {
   }, [load]);
 
   return (
-    <div className="p-3 w-full max-w-3xl mx-auto grid gap-4">
+    <div className="mx-auto grid w-full max-w-3xl gap-3">
       <h1 className="text-xl font-semibold">Guarantee claims</h1>
       <div role="group" aria-label="Status" className="flex gap-2">
         {FILTERS.map((f) => (

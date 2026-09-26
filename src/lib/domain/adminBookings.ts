@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
-import { addDaysToDateString, formatIst, istDateString, istDateToUtc, istLocalToUtc } from "@/lib/time";
+import { addDaysToDateString, formatIst, istDateString, istDateToUtc, istLocalToUtc, slotToMinutes } from "@/lib/time";
 import {
     BOOKING_GROUP_STATUSES,
     OPEN_STATUSES,
@@ -96,7 +96,7 @@ export async function listBookings(options: { group?: BookingGroup; q?: string; 
               ? [{ completedAt: "desc" }]
               : group === "cancelled"
                 ? [{ updatedAt: "desc" }]
-                : [{ createdAt: "desc" }];
+                : [{ date: "asc" }, { createdAt: "asc" }];
 
     const [rows, total, statusCounts] = await Promise.all([
         db.booking.findMany({ where, orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: listInclude }),
@@ -108,7 +108,10 @@ export async function listBookings(options: { group?: BookingGroup; q?: string; 
     const sum = (statuses: BookingStatusValue[]) => statuses.reduce((n, s) => n + (byStatus.get(s) ?? 0), 0);
 
     return {
-        items: rows.map(toListItem),
+        // Earliest visit first. Time slots are text, so the order within a day is fixed here.
+        items: rows
+            .map(toListItem)
+            .sort((x, y) => (group === "completed" || group === "cancelled" ? 0 : x.date.localeCompare(y.date) || slotToMinutes(x.time) - slotToMinutes(y.time))),
         counts: {
             new: sum(BOOKING_GROUP_STATUSES.new),
             active: sum(BOOKING_GROUP_STATUSES.active),
@@ -420,6 +423,12 @@ export interface DashboardStats {
     month: { completed: number; collected: number };
     technicians: { active: number; busy: number };
     chart: { date: string; Bookings: number }[];
+    attention: { delayed: number; pendingClaims: number; failedMessages: number };
+    // Waiting for a technician, oldest first.
+    newQueue: AdminBookingListItem[];
+    // Confirmed and running jobs by visit time, overdue ones first.
+    schedule: (AdminBookingListItem & { isOverdue: boolean })[];
+    teamNow: { id: string; name: string; openJobs: number }[];
 }
 
 export async function getDashboardStats(): Promise<DashboardStats> {
@@ -430,7 +439,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     const chartStart = istDateToUtc(addDaysToDateString(today, -13));
     const staleBefore = new Date(Date.now() - UNASSIGNED_ALERT_MINUTES * 60000);
 
-    const [statusCounts, newToday, doneToday, collectedToday, doneMonth, collectedMonth, stale, activeTechnicians, busy, recent] = await Promise.all([
+    const [statusCounts, newToday, doneToday, collectedToday, doneMonth, collectedMonth, stale, activeTechnicians, busy, recent, delayed, pendingClaims, failedMessages, queueRows, scheduleRows, team] = await Promise.all([
         db.booking.groupBy({ by: ["status"], _count: { _all: true } }),
         db.booking.count({ where: { createdAt: { gte: dayStart, lt: dayEnd } } }),
         db.booking.count({ where: { status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
@@ -441,6 +450,16 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         db.technician.count({ where: { isActive: true } }),
         db.booking.groupBy({ by: ["technicianId"], where: { technicianId: { not: null }, status: { in: OPEN_STATUSES }, technician: { isActive: true } } }),
         db.booking.findMany({ where: { createdAt: { gte: chartStart } }, select: { createdAt: true } }),
+        db.booking.count({ where: { status: "DELAYED" } }),
+        db.warrantyClaim.count({ where: { status: "PENDING" } }),
+        db.notificationLog.count({ where: { status: "FAILED", createdAt: { gte: new Date(Date.now() - 3 * 86400000) } } }),
+        db.booking.findMany({ where: { status: "NEW" }, orderBy: { createdAt: "asc" }, take: 5, include: listInclude }),
+        db.booking.findMany({ where: { status: { in: ["CONFIRMED", "ARRIVING", "WORKING", "DELAYED"] } }, orderBy: [{ date: "asc" }], take: 40, include: listInclude }),
+        db.technician.findMany({
+            where: { isActive: true },
+            orderBy: { name: "asc" },
+            select: { id: true, name: true, _count: { select: { bookings: { where: { status: { in: OPEN_STATUSES } } } } } },
+        }),
     ]);
 
     const byStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
@@ -468,5 +487,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         month: { completed: doneMonth, collected: collectedMonth._sum.amountCollected ?? 0 },
         technicians: { active: activeTechnicians, busy: busy.length },
         chart,
+        attention: { delayed, pendingClaims, failedMessages },
+        newQueue: queueRows.map(toListItem),
+        schedule: scheduleRows
+            .map((b) => ({ ...toListItem(b), isOverdue: b.date.getTime() < dayStart.getTime() }))
+            .sort((a, b) => a.date.localeCompare(b.date) || slotToMinutes(a.time) - slotToMinutes(b.time))
+            .slice(0, 8),
+        teamNow: team.map((t) => ({ id: t.id, name: t.name, openJobs: t._count.bookings })),
     };
 }

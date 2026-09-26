@@ -2,10 +2,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { EmptyState, ListSkeleton, PageTitle, Panel } from "@/components/custom/admin/ui";
 import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
 
 export default function ServiceAreasPage() {
@@ -32,11 +30,7 @@ export default function ServiceAreasPage() {
   const send = async (url: string, method: string, body?: object) => {
     setBusy(true);
     try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: body ? JSON.stringify(body) : undefined,
-      });
+      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
       const json = await res.json();
       if (json.status === "success") {
         toast.success(json.message);
@@ -58,76 +52,58 @@ export default function ServiceAreasPage() {
   };
 
   return (
-    <div className="p-3 w-full max-w-3xl mx-auto">
-      <h1 className="text-xl font-semibold mb-1">Areas we serve</h1>
-      <p className="text-sm text-muted-foreground mb-4">
-        Customers can book from any town or village inside an active district. Each active district also gets its own page on the website.
-      </p>
+    <div className="mx-auto max-w-3xl">
+      <PageTitle title="Areas we serve" sub="Customers can book from any town or village inside an open district. Each open district also gets its own page on the website." />
 
-      <Card className="mb-4">
-        <CardContent className="px-6 pb-6 pt-6">
-          <form onSubmit={add} className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5 flex-1 min-w-[140px]">
-              <label className="text-sm font-medium" htmlFor="area-state">State</label>
-              <Input id="area-state" value={state} onChange={(e) => setState(e.target.value)} />
-            </div>
-            <div className="grid gap-1.5 flex-1 min-w-[140px]">
-              <label className="text-sm font-medium" htmlFor="area-district">District</label>
-              <Input id="area-district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="e.g. Budaun" />
-            </div>
-            <Button type="submit" disabled={busy}>Add district</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <Panel title="Add a district" className="mb-3">
+        <form onSubmit={add} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div className="grid gap-1">
+            <label className="text-xs font-medium" htmlFor="area-state">
+              State
+            </label>
+            <Input id="area-state" className="h-11" value={state} onChange={(e) => setState(e.target.value)} />
+          </div>
+          <div className="grid gap-1">
+            <label className="text-xs font-medium" htmlFor="area-district">
+              District
+            </label>
+            <Input id="area-district" className="h-11" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="e.g. Budaun" />
+          </div>
+          <Button type="submit" className="h-11" disabled={busy || !district.trim()}>
+            Add district
+          </Button>
+        </form>
+      </Panel>
 
-      <Card>
-        <CardContent>
-          {areas === null ? (
-            <div className="h-32 flex items-center justify-center text-muted-foreground">Loading...</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-accent">
-                  <TableHead className="p-2">District</TableHead>
-                  <TableHead className="p-2">State</TableHead>
-                  <TableHead className="p-2">Status</TableHead>
-                  <TableHead className="p-2 text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {areas.map((a) => (
-                  <TableRow key={a.id}>
-                    <TableCell className="p-2">{a.district}</TableCell>
-                    <TableCell className="p-2">{a.state}</TableCell>
-                    <TableCell className="p-2">
-                      <Badge className={a.isActive ? "bg-green-600" : "bg-gray-400"}>{a.isActive ? "Open for bookings" : "Closed"}</Badge>
-                    </TableCell>
-                    <TableCell className="p-2 text-right space-x-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() => send(`/api/service-areas/${a.id}`, "PUT", { state: a.state, district: a.district, isActive: !a.isActive })}
-                      >
-                        {a.isActive ? "Close" : "Open"}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600"
-                        disabled={busy}
-                        onClick={() => window.confirm(`Delete ${a.district}?`) && send(`/api/service-areas/${a.id}`, "DELETE")}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      {areas === null ? (
+        <ListSkeleton rows={2} />
+      ) : areas.length === 0 ? (
+        <EmptyState title="No districts yet" text="Add a district to start taking bookings." />
+      ) : (
+        <ul className="grid gap-2">
+          {areas.map((a) => (
+            <li key={a.id} className="rounded-xl border bg-white p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-slate-900">{a.district}</p>
+                  <p className="text-xs text-slate-500">{a.state}</p>
+                </div>
+                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${a.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-700"}`}>
+                  {a.isActive ? "Open for bookings" : "Closed"}
+                </span>
+              </div>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline" disabled={busy} onClick={() => send(`/api/service-areas/${a.id}`, "PUT", { state: a.state, district: a.district, isActive: !a.isActive })}>
+                  {a.isActive ? "Close" : "Open"}
+                </Button>
+                <Button size="sm" variant="outline" className="text-red-600" disabled={busy} onClick={() => window.confirm(`Delete ${a.district}?`) && send(`/api/service-areas/${a.id}`, "DELETE")}>
+                  Delete
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

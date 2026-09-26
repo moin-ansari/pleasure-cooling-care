@@ -4,7 +4,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { PageTitle } from "@/components/custom/admin/ui";
 import type { NotificationItem, NotificationList } from "@/lib/domain/notifications";
 
 type Filter = "ALL" | "FAILED" | "SKIPPED" | "SENT";
@@ -29,9 +29,6 @@ export default function NotificationsPage() {
   const [filter, setFilter] = useState<Filter>("ALL");
   const [page, setPage] = useState(1);
   const [data, setData] = useState<NotificationList | null>(null);
-  const [phone, setPhone] = useState("");
-  const [phoneLoaded, setPhoneLoaded] = useState(false);
-  const [savingPhone, setSavingPhone] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -49,36 +46,6 @@ export default function NotificationsPage() {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (data && !phoneLoaded) {
-      setPhone(data.adminAlertPhone ?? "");
-      setPhoneLoaded(true);
-    }
-  }, [data, phoneLoaded]);
-
-  const savePhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingPhone(true);
-    try {
-      const res = await fetch("/api/admin/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ adminAlertPhone: phone }),
-      });
-      const json = await res.json();
-      if (json.status === "success") {
-        toast.success(json.message);
-        setPhone(json.data.adminAlertPhone ?? "");
-      } else {
-        toast.error(json.message || "Could not save");
-      }
-    } catch {
-      toast.error("Could not save");
-    } finally {
-      setSavingPhone(false);
-    }
-  };
 
   const resend = async (id: string) => {
     setBusyId(id);
@@ -104,8 +71,8 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="p-3 w-full max-w-4xl mx-auto grid gap-4">
-      <h1 className="text-xl font-semibold">Messages</h1>
+    <div className="mx-auto grid max-w-4xl gap-3">
+      <PageTitle title="Messages" sub={<Link href="/admin/settings" className="text-blue-700 underline">Change the new-booking alert number in Settings</Link>} />
 
       {data && (
         <p
@@ -117,26 +84,6 @@ export default function NotificationsPage() {
             : "SMS is not set up yet. Every message below is recorded but not sent. Once the MSG91 key and template ids are added on the server, new messages will go out, and you can resend the ones listed here."}
         </p>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">New booking alert</CardTitle>
-        </CardHeader>
-        <CardContent className="px-6 pb-6">
-          <form onSubmit={savePhone} className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5 flex-1 min-w-[200px]">
-              <label htmlFor="alert-phone" className="text-sm font-medium">
-                Send me an SMS on every new booking
-              </label>
-              <Input id="alert-phone" type="tel" inputMode="numeric" placeholder="10 digit mobile number" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <p className="text-xs text-muted-foreground">Leave empty to turn these alerts off.</p>
-            </div>
-            <Button type="submit" disabled={savingPhone}>
-              {savingPhone ? "Saving..." : "Save"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       <div role="tablist" aria-label="Message status" className="flex flex-wrap gap-2">
         {FILTERS.map(({ key, label }) => (
@@ -152,7 +99,7 @@ export default function NotificationsPage() {
       ) : data.items.length === 0 ? (
         <p className="py-10 text-center text-muted-foreground">No messages yet.</p>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="grid gap-2">
           {data.items.map((m) => (
             <li key={m.id}>
               <Card>
