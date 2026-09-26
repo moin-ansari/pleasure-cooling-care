@@ -1,12 +1,21 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import RegisterServiceWorker from "@/components/custom/RegisterServiceWorker";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+export const viewport: Viewport = {
+  themeColor: "#1d4ed8",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
+  applicationName: "Pleasure Cooling Care",
+  appleWebApp: { capable: true, title: "Cooling Care", statusBarStyle: "default" },
   metadataBase: new URL(SITE_URL),
   title: { default: "Pleasure Cooling Care", template: "%s | Pleasure Cooling Care" },
   description: "AC, refrigerator, washing machine and geyser repair and installation at your home.",
@@ -27,6 +36,7 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         <Toaster/>
+        <RegisterServiceWorker />
       </body>
     </html>
   );

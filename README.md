@@ -25,3 +25,8 @@ npm run dev
 - Use a PostgreSQL 16+ database with UTF-8 encoding. `DATABASE_URL` is the pooled connection, `DIRECT_URL` the direct one used by migrations.
 - SMS needs an MSG91 account with DLT-registered templates. Template texts are in `src/constants/sms.ts`; set the matching `MSG91_TEMPLATE_*` ids. Without them messages are logged as "Not sent".
 - Contact details and business name are in `src/constants/business.ts`; the owner background on `/about` is in `src/constants/about.ts`.
+
+docker start pcc-test-pg
+npm install
+npm run db:deploy
+npm run dev

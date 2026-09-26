@@ -10,6 +10,7 @@ const nextConfig = {
   },
   async headers() {
     return [
+      { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
       { source: "/admin/:path*", headers: noindex },
       { source: "/technician/:path*", headers: noindex },
       { source: "/api/:path*", headers: noindex },

@@ -48,7 +48,7 @@ async function getCancelCutoff(): Promise<BookingStatusValue> {
 
 export async function createBooking(
     raw: unknown,
-    options: { source?: BookingSource } = {}
+    options: { source?: BookingSource; actor?: { type: "admin"; id: string } } = {}
 ): Promise<Result<{ bookingRef: string; price: number }>> {
     const parsed = BookingInputSchema.safeParse(withNormalizedMobile(raw));
     if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
@@ -104,7 +104,7 @@ export async function createBooking(
         utmMedium: input.utmMedium,
         utmCampaign: input.utmCampaign,
         clickId: input.clickId,
-        statusHistory: { create: { toStatus: "NEW" as const, changedByType: "customer" } },
+        statusHistory: { create: { toStatus: "NEW" as const, changedByType: options.actor?.type ?? "customer", changedById: options.actor?.id ?? null, note: options.actor ? "Booked by phone" : null } },
     };
 
     for (let attempt = 0; attempt < 3; attempt++) {

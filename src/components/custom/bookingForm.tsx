@@ -20,10 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, SUB_TYPES, type ApplianceCategoryValue } from "@/constants/appliances";
-import { MAX_BOOKING_DAYS_AHEAD, TIME_SLOTS } from "@/constants/booking";
+import { MAX_BOOKING_DAYS_AHEAD, MIN_LEAD_MINUTES, TIME_SLOTS } from "@/constants/booking";
 import { BookingInputSchema } from "@/schema/booking";
 import { normalizeIndianMobile } from "@/lib/phone";
-import { addDaysToDateString, istDateString } from "@/lib/time";
+import { addDaysToDateString, istDateString, istMinutesOfDay, slotToMinutes } from "@/lib/time";
 import { captureAttribution, readAttribution } from "@/lib/attribution";
 import type { ServiceItem } from "@/types/service";
 import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
@@ -145,6 +145,14 @@ export default function BookingForm({
   const category = watch("applianceCategory");
   const subType = watch("applianceSubType");
   const serviceId = watch("serviceId");
+  const chosenDate = watch("date");
+  const chosenTime = watch("time");
+
+  // For today, only offer slots that are still far enough ahead. Other days offer all of them.
+  const slots = useMemo(() => (chosenDate === istDateString() ? TIME_SLOTS.filter((t) => slotToMinutes(t) >= istMinutesOfDay() + MIN_LEAD_MINUTES) : [...TIME_SLOTS]), [chosenDate]);
+  useEffect(() => {
+    if (slots.length && !slots.some((t) => t === chosenTime)) setValue("time", slots[0]);
+  }, [slots, chosenTime, setValue]);
 
   const subTypes = useMemo(() => subTypesFor(services, category), [services, category]);
   const options = useMemo(() => optionsFor(services, category, subType), [services, category, subType]);
@@ -305,7 +313,8 @@ export default function BookingForm({
               </Field>
               <Field id="bf-time" label="Time" error={errors.time?.message}>
                 <select id="bf-time" className={selectClass} {...register("time")}>
-                  {TIME_SLOTS.map((t) => (
+                  {slots.length === 0 && <option value="">No slots left today. Choose another day.</option>}
+                  {slots.map((t) => (
                     <option key={t} value={t}>
                       {t}
                     </option>
@@ -361,7 +370,7 @@ export default function BookingForm({
               <span className="text-xs text-blue-100" aria-live="polite">
                 {locStatus === "ok" && "Location added. Thank you."}
                 {locStatus === "failed" && "Could not get your location. No problem, we will use your address."}
-                {locStatus === "idle" && "Optional. Helps the technician find you."}
+                {locStatus === "idle" && "Optional. Shares your phone's location with us for this booking only, so the technician can find you."}
               </span>
             </div>
 
@@ -377,6 +386,17 @@ export default function BookingForm({
                 Review booking
               </Button>
             </div>
+            <p className="pt-2 text-center text-xs text-blue-100">
+              By booking you agree to our{" "}
+              <Link href="/terms" className="underline">
+                Terms
+              </Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="underline">
+                Privacy Policy
+              </Link>
+              . We use your name, number and address only to arrange and contact you about this booking.
+            </p>
           </form>
         )}
       </div>

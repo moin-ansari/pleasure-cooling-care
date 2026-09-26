@@ -12,6 +12,7 @@ import {
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { AssignInputSchema, CancelInputSchema, PriceInputSchema } from "@/schema/adminBooking";
 import { bookingWhere, canAccessStore, storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
+import { createBooking } from "./bookings";
 import { notifyAssigned, notifyCancelled, notifyPriceChanged } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
@@ -518,4 +519,61 @@ export async function getDashboardStats(scope: AdminScope): Promise<DashboardSta
             .slice(0, 8),
         teamNow: team.map((t) => ({ id: t.id, name: t.name, openJobs: t._count.bookings })),
     };
+}
+
+// ---------- booking on behalf of a customer who phoned ----------
+
+// The same rules as the website form, for a city this admin is allowed to serve. The customer gets the usual message.
+export async function createBookingForAdmin(scope: AdminScope, raw: unknown): Promise<Result<{ id: string; bookingRef: string; price: number }>> {
+    const areaId = raw && typeof raw === "object" && "serviceAreaId" in raw ? String((raw as { serviceAreaId: unknown }).serviceAreaId ?? "") : "";
+    const area = areaId ? await db.serviceArea.findUnique({ where: { id: areaId }, select: { storeId: true } }) : null;
+    if (!area || !canAccessStore(scope, area.storeId)) return fail("not_found", "Choose one of your cities");
+
+    const mobile = raw && typeof raw === "object" && "mobile" in raw ? String((raw as { mobile: unknown }).mobile ?? "").replace(/\D/g, "").slice(-10) : "";
+    if (mobile && (await db.blockedPhone.findUnique({ where: { mobile } }))) {
+        return fail("blocked", "This number is blocked. The owner can unblock it from Customers.");
+    }
+
+    const result = await createBooking(raw, { source: "ADMIN", actor: { type: "admin", id: scope.adminId } });
+    if (!result.ok) return result;
+
+    const booking = await db.booking.findUnique({ where: { bookingRef: result.data.bookingRef }, select: { id: true } });
+    if (!booking) return fail("unknown", "Could not find the new booking");
+    await logAudit({ actorType: "admin", actorId: scope.adminId, action: "booking.createByAdmin", entity: "Booking", entityId: booking.id, after: { bookingRef: result.data.bookingRef } });
+    return ok({ id: booking.id, bookingRef: result.data.bookingRef, price: result.data.price });
+}
+
+// ---------- schedule ----------
+
+export interface ScheduleDay {
+    date: string;
+    count: number;
+}
+
+export interface Schedule {
+    date: string;
+    days: ScheduleDay[];
+    items: AdminBookingListItem[];
+}
+
+const SCHEDULE_DAYS = 14;
+
+// Everything planned for one day, by time slot, and how busy each of the coming days is.
+export async function getSchedule(scope: AdminScope, requested?: string): Promise<Schedule> {
+    const today = istDateString();
+    const date = requested && /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : today;
+    const first = addDaysToDateString(today, -1);
+    const last = addDaysToDateString(today, SCHEDULE_DAYS - 2);
+
+    const [rows, counts] = await Promise.all([
+        db.booking.findMany({ where: { ...bookingWhere(scope), date: istDateToUtc(date), status: { not: "CANCELLED" } }, include: listInclude, orderBy: { createdAt: "asc" } }),
+        db.booking.groupBy({ by: ["date"], where: { ...bookingWhere(scope), status: { not: "CANCELLED" }, date: { gte: istDateToUtc(first), lte: istDateToUtc(last) } }, _count: { _all: true } }),
+    ]);
+
+    const countOf = new Map(counts.map((c) => [istDateString(c.date), c._count._all]));
+    const days: ScheduleDay[] = [];
+    for (let d = first; d <= last; d = addDaysToDateString(d, 1)) days.push({ date: d, count: countOf.get(d) ?? 0 });
+
+    const items = rows.map(toListItem).sort((a, b) => slotToMinutes(a.time) - slotToMinutes(b.time));
+    return { date, days, items };
 }

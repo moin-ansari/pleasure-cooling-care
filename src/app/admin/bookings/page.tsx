@@ -1,13 +1,15 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
 import BookingCard from "@/components/custom/admin/BookingCard";
+import SchedulePanel from "@/components/custom/admin/SchedulePanel";
 import { Chips, EmptyState, ListSkeleton, PageTitle } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { BOOKING_GROUPS, BOOKING_GROUP_LABELS, type BookingGroup } from "@/constants/booking";
@@ -16,6 +18,7 @@ import type { AdminBookingList } from "@/lib/domain/adminBookings";
 
 export default function BookingsPage() {
   const router = useRouter();
+  const [view, setView] = useState<"list" | "schedule">("list");
   const [group, setGroup] = useState<BookingGroup>("new");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
@@ -55,7 +58,26 @@ export default function BookingsPage() {
 
   return (
     <div>
-      <PageTitle title="Bookings" sub={data ? `${data.total} ${BOOKING_GROUP_LABELS[group].toLowerCase()}` : undefined} />
+      <PageTitle
+        title="Bookings"
+        sub={view === "list" && data ? `${data.total} ${BOOKING_GROUP_LABELS[group].toLowerCase()}` : undefined}
+        action={
+          <Button asChild size="sm">
+            <Link href="/admin/bookings/new">
+              <Plus className="mr-1 h-4 w-4" aria-hidden="true" /> New
+            </Link>
+          </Button>
+        }
+      />
+
+      <div className="mb-3">
+        <Chips<"list" | "schedule"> label="View" value={view} onChange={setView} options={[{ key: "list", label: "List" }, { key: "schedule", label: "Schedule" }]} />
+      </div>
+
+      {view === "schedule" ? (
+        <SchedulePanel />
+      ) : (
+      <>
 
       <div className="relative mb-2">
         <label htmlFor="booking-search" className="sr-only">
@@ -147,6 +169,8 @@ export default function BookingsPage() {
             Next
           </Button>
         </div>
+      )}
+      </>
       )}
     </div>
   );

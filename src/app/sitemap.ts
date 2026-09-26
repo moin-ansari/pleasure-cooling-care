@@ -13,6 +13,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: absoluteUrl("/home"), changeFrequency: "weekly", priority: 1 },
     { url: absoluteUrl("/about"), changeFrequency: "monthly", priority: 0.5 },
+    { url: absoluteUrl("/guarantee-terms"), changeFrequency: "yearly", priority: 0.3 },
+    { url: absoluteUrl("/terms"), changeFrequency: "yearly", priority: 0.3 },
+    { url: absoluteUrl("/privacy"), changeFrequency: "yearly", priority: 0.3 },
     ...areas.map((a) => ({ url: absoluteUrl(`/${districtSlug(a.district)}`), changeFrequency: "weekly" as const, priority: 0.9 })),
     ...areas.flatMap((a) =>
       categories.map((c) => ({

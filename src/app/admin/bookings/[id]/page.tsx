@@ -196,7 +196,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
             </CardHeader>
             <CardContent className="grid gap-3 px-3 pb-3">
               <div>
-                <p className="font-medium">{booking.customerName}</p>
+                <p className="font-medium"><Link href={`/admin/customers/${booking.mobile}`} className="text-blue-800 underline-offset-2 hover:underline">{booking.customerName}</Link></p>
                 <p className="text-sm text-muted-foreground">{booking.mobile}</p>
               </div>
               <div className="flex flex-wrap gap-2">
