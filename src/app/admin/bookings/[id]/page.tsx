@@ -184,6 +184,14 @@ export default function BookingPage({ params }: { params: { id: string } }) {
         </span>
       </div>
 
+      {booking.reassignReason && (
+        <div role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+          <p className="font-semibold">{booking.technician?.name ?? "The technician"} cannot attend this job</p>
+          <p>{booking.reassignReason}</p>
+          <p className="mt-1 text-xs">Choose someone else below. Until you do, the job stays with them.</p>
+        </div>
+      )}
+
       {booking.status === "CANCELLED" && booking.cancelReason && (
         <p className="rounded-md border border-gray-300 bg-gray-50 p-3 text-sm">Cancelled: {booking.cancelReason}</p>
       )}

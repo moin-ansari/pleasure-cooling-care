@@ -35,6 +35,10 @@ export function addDaysToDateString(dateString: string, days: number): string {
     return istDateString(base);
 }
 
+// For columns that hold only a calendar date (no time), so "2026-09-27" is stored as exactly that day.
+export const dbDay = (dateString: string): Date => new Date(`${dateString}T00:00:00.000Z`);
+export const fromDbDay = (date: Date): string => date.toISOString().slice(0, 10);
+
 // "02:00 PM" -> 840
 export function slotToMinutes(slot: string): number {
     const match = /^(\d{1,2}):(\d{2})\s(AM|PM)$/i.exec(slot.trim());

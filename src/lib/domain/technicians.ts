@@ -48,6 +48,8 @@ export interface TechnicianDetail extends Omit<TechnicianListItem, "districts" |
     ifsc: string | null;
     idType: string | null;
     idNumber: string | null;
+    // Only whether a document is on file. The image itself is private and is read through its own route.
+    hasIdProof: boolean;
     joinedAt: string;
 }
 
@@ -110,6 +112,7 @@ export async function getTechnician(scope: AdminScope, id: string): Promise<Tech
         ifsc: t.ifsc,
         idType: t.idType,
         idNumber: t.idNumber,
+        hasIdProof: !!t.idImageUrl,
         rank: t.rank,
         jobsCompletedCount: t.jobsCompletedCount,
         averageRating: t.averageRating,
@@ -303,6 +306,7 @@ export interface TechnicianSelf {
     name: string;
     phone: string;
     workEmail: string;
+    photo: string | null;
     rank: TechnicianListItem["rank"];
     jobsCompletedCount: number;
     averageRating: number;
@@ -322,6 +326,7 @@ export async function getTechnicianSelf(id: string): Promise<TechnicianSelf | nu
         name: t.name,
         phone: t.phone,
         workEmail: t.workEmail,
+        photo: t.photo,
         rank: t.rank,
         jobsCompletedCount: t.jobsCompletedCount,
         averageRating: t.averageRating,

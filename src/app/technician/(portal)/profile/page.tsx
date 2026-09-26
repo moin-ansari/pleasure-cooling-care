@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { MdLogout } from "react-icons/md";
 import { Button } from "@/components/ui/button";
 import { techFetch } from "@/components/custom/technician/techFetch";
@@ -26,10 +27,15 @@ export default function ProfilePage() {
 
   return (
     <div className="grid gap-4">
-      <section className="rounded-lg border bg-background p-4 shadow-sm">
-        <h1 className="text-xl font-bold">{me.name}</h1>
-        <p className="text-sm text-muted-foreground">{me.workEmail}</p>
-        <p className="text-sm text-muted-foreground">{me.phone}</p>
+      <section className="flex items-center gap-3 rounded-lg border bg-background p-4 shadow-sm">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full border bg-slate-100">
+          {me.photo ? <Image src={me.photo} alt="" fill sizes="64px" className="object-cover" unoptimized /> : <span className="flex h-full items-center justify-center text-xl font-semibold text-slate-400">{me.name[0]}</span>}
+        </div>
+        <div className="min-w-0">
+          <h1 className="truncate text-xl font-bold">{me.name}</h1>
+          <p className="truncate text-sm text-muted-foreground">{me.workEmail}</p>
+          <p className="text-sm text-muted-foreground">{me.phone}</p>
+        </div>
       </section>
 
       <section className="grid grid-cols-3 gap-3 text-center" aria-label="Your numbers">

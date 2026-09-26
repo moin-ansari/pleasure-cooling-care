@@ -1,7 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { logAudit } from "@/lib/audit";
-import { addDaysToDateString, formatIst, istDateString, istDateToUtc, istLocalToUtc, slotToMinutes } from "@/lib/time";
+import { addDaysToDateString, dbDay, formatIst, istDateString, istDateToUtc, istLocalToUtc, slotToMinutes } from "@/lib/time";
 import {
     BOOKING_GROUP_STATUSES,
     OPEN_STATUSES,
@@ -36,6 +36,8 @@ export interface AdminBookingListItem {
     createdAt: string;
     isStale: boolean;
     storeName: string;
+    // The technician said they cannot attend and the job needs someone else.
+    reassignRequested: boolean;
 }
 
 export interface AdminBookingList {
@@ -72,6 +74,7 @@ function toListItem(b: Prisma.BookingGetPayload<{ include: typeof listInclude }>
         createdAt: b.createdAt.toISOString(),
         isStale: b.status === "NEW" && waitedMinutes >= UNASSIGNED_ALERT_MINUTES,
         storeName: b.store.name,
+        reassignRequested: !!b.reassignRequestedAt,
     };
 }
 
@@ -156,6 +159,7 @@ export interface AdminBookingDetail extends AdminBookingListItem {
     // Commission the business earns on a completed job, after any corrections. Null until the job is completed.
     commission: number | null;
     warrantyRedoOfRef: string | null;
+    reassignReason: string | null;
     cancelReason: string | null;
     technicianNotes: string | null;
     utmSource: string | null;
@@ -218,6 +222,7 @@ export async function getBookingDetail(scope: AdminScope, id: string): Promise<A
         warrantyExpiresAt: b.warrantyExpiresAt?.toISOString() ?? null,
         commission: commissionSum ? Math.round(Number(commissionSum._sum.amount ?? 0) * 100) / 100 : null,
         warrantyRedoOfRef: b.warrantyClaimOf?.bookingRef ?? null,
+        reassignReason: b.reassignRequestedAt ? b.reassignReason : null,
         cancelReason: b.cancelReason,
         technicianNotes: b.technicianNotes,
         utmSource: b.utmSource,
@@ -251,6 +256,8 @@ export interface AssignableTechnician {
     storeName: string;
     // Same store as the booking. Picking someone from another store moves the booking to that store.
     sameStore: boolean;
+    // They marked the booking's day as not available.
+    isOffThatDay: boolean;
 }
 
 // Active technicians, best fit first: works in the district, handles the appliance, then fewest open jobs.
@@ -261,7 +268,7 @@ export async function listAssignableTechnicians(scope: AdminScope, bookingId: st
     });
     if (!booking) return null;
 
-    const [technicians, openJobs, sameDay] = await Promise.all([
+    const [technicians, openJobs, sameDay, offToday] = await Promise.all([
         // A co-admin can only pick from their own store's technicians. The owner can pick anyone.
         db.technician.findMany({ where: { isActive: true, ...storeOnlyWhere(scope) }, include: { serviceAreas: { select: { id: true } }, store: { select: { name: true } } } }),
         db.booking.groupBy({
@@ -274,7 +281,9 @@ export async function listAssignableTechnicians(scope: AdminScope, bookingId: st
             where: { technicianId: { not: null }, date: booking.date, status: { not: "CANCELLED" }, id: { not: bookingId } },
             _count: { _all: true },
         }),
+        db.technicianUnavailability.findMany({ where: { date: dbDay(istDateString(booking.date)) }, select: { technicianId: true } }),
     ]);
+    const offSet = new Set(offToday.map((o) => o.technicianId));
     const openBy = new Map(openJobs.map((j) => [j.technicianId, j._count._all]));
     const dayBy = new Map(sameDay.map((j) => [j.technicianId, j._count._all]));
 
@@ -292,9 +301,10 @@ export async function listAssignableTechnicians(scope: AdminScope, bookingId: st
         isCurrent: t.id === booking.technicianId,
         storeName: t.store.name,
         sameStore: t.storeId === booking.storeId,
+        isOffThatDay: offSet.has(t.id),
     }));
 
-    const fit = (t: AssignableTechnician) => (t.sameStore ? 4 : 0) + (t.worksInDistrict ? 2 : 0) + (t.handlesAppliance ? 1 : 0);
+    const fit = (t: AssignableTechnician) => (t.isOffThatDay ? -8 : 0) + (t.sameStore ? 4 : 0) + (t.worksInDistrict ? 2 : 0) + (t.handlesAppliance ? 1 : 0);
     return items.sort((a, b) => fit(b) - fit(a) || a.activeJobs - b.activeJobs || a.name.localeCompare(b.name));
 }
 
@@ -321,6 +331,13 @@ export async function assignBooking(scope: AdminScope, bookingId: string, raw: u
     // The owner may pick a technician from another store. The job then earns for that technician's store.
     const movesStore = technician.storeId !== booking.storeId;
 
+    // Someone who marked that day as not available is only assigned once the admin has said yes to that.
+    const arrivalDay = istDateString(arrival);
+    if (!parsed.data.acknowledgeOff && !(technician.id === booking.technicianId)) {
+        const off = await db.technicianUnavailability.findUnique({ where: { technicianId_date: { technicianId: technician.id, date: dbDay(arrivalDay) } } });
+        if (off) return fail("technician_off", `${technician.name} marked ${arrivalDay} as not available. Assign anyway?`);
+    }
+
     const sameTechnician = booking.technicianId === technician.id;
     const note = movesStore
         ? `Assigned to ${technician.name} of ${technician.store.name}, arrival ${formatIst(arrival)}. The booking now belongs to ${technician.store.name}.`
@@ -338,6 +355,9 @@ export async function assignBooking(scope: AdminScope, bookingId: string, raw: u
                 status: "CONFIRMED",
                 technicianId: technician.id,
                 ...(movesStore ? { storeId: technician.storeId } : {}),
+                // Whoever takes the job answers the "cannot attend" request.
+                reassignRequestedAt: null,
+                reassignReason: null,
                 confirmedArrivalAt: arrival,
                 ...(sameTechnician ? {} : { etaAt: null }),
             },
@@ -445,7 +465,7 @@ export interface DashboardStats {
     month: { completed: number; collected: number };
     technicians: { active: number; busy: number };
     chart: { date: string; Bookings: number }[];
-    attention: { delayed: number; pendingClaims: number; failedMessages: number };
+    attention: { delayed: number; pendingClaims: number; failedMessages: number; reassignRequests: number };
     // Waiting for a technician, oldest first.
     newQueue: AdminBookingListItem[];
     // Confirmed and running jobs by visit time, overdue ones first.
@@ -463,7 +483,7 @@ export async function getDashboardStats(scope: AdminScope): Promise<DashboardSta
     const chartStart = istDateToUtc(addDaysToDateString(today, -13));
     const staleBefore = new Date(Date.now() - UNASSIGNED_ALERT_MINUTES * 60000);
 
-    const [statusCounts, newToday, doneToday, collectedToday, doneMonth, collectedMonth, stale, activeTechnicians, busy, recent, delayed, pendingClaims, failedMessages, queueRows, scheduleRows, team] = await Promise.all([
+    const [statusCounts, newToday, doneToday, collectedToday, doneMonth, collectedMonth, stale, activeTechnicians, busy, recent, delayed, pendingClaims, failedMessages, queueRows, scheduleRows, team, reassignRequests] = await Promise.all([
         db.booking.groupBy({ by: ["status"], where: bw, _count: { _all: true } }),
         db.booking.count({ where: { ...bw, createdAt: { gte: dayStart, lt: dayEnd } } }),
         db.booking.count({ where: { ...bw, status: "COMPLETED", completedAt: { gte: dayStart, lt: dayEnd } } }),
@@ -484,6 +504,7 @@ export async function getDashboardStats(scope: AdminScope): Promise<DashboardSta
             orderBy: { name: "asc" },
             select: { id: true, name: true, _count: { select: { bookings: { where: { status: { in: OPEN_STATUSES } } } } } },
         }),
+        db.booking.count({ where: { ...bw, reassignRequestedAt: { not: null }, status: { in: OPEN_STATUSES } } }),
     ]);
 
     const byStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
@@ -511,7 +532,7 @@ export async function getDashboardStats(scope: AdminScope): Promise<DashboardSta
         month: { completed: doneMonth, collected: collectedMonth._sum.amountCollected ?? 0 },
         technicians: { active: activeTechnicians, busy: busy.length },
         chart,
-        attention: { delayed, pendingClaims, failedMessages },
+        attention: { delayed, pendingClaims, failedMessages, reassignRequests },
         newQueue: queueRows.map(toListItem),
         schedule: scheduleRows
             .map((b) => ({ ...toListItem(b), isOverdue: b.date.getTime() < dayStart.getTime() }))

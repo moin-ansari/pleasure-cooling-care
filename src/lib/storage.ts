@@ -58,3 +58,76 @@ export async function saveImage(bytes: Uint8Array, folder: ImageFolder): Promise
 
     return fail("not_configured", "Image storage is not set up yet. Add the Supabase keys on the server.");
 }
+
+// ---------- private documents (technician ID proof) ----------
+// Never public. Kept in a private Supabase bucket, or in private-uploads/ while developing, and only ever read back by
+// an admin route that checks who is asking.
+
+const privateBucket = () => process.env.SUPABASE_PRIVATE_BUCKET?.trim() || "pcc-private";
+const ID_KEY = /^id-proofs\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+const TYPE_OF_EXTENSION: Record<string, string> = { jpg: "image/jpeg", png: "image/png", webp: "image/webp" };
+
+export async function saveIdProof(bytes: Uint8Array): Promise<Result<{ key: string }>> {
+    if (bytes.length === 0) return fail("empty", "Choose an image");
+    if (bytes.length > MAX_IMAGE_BYTES) return fail("too_large", "The image is larger than 2 MB. Choose a smaller one.");
+    const type = sniffImageType(bytes);
+    if (!type) return fail("bad_type", "Use a JPG, PNG or WebP image");
+
+    const key = `id-proofs/${randomUUID()}.${EXTENSIONS[type]}`;
+    const supabase = supabaseConfig();
+
+    if (supabase) {
+        const res = await fetch(`${supabase.url}/storage/v1/object/${privateBucket()}/${key}`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${supabase.key}`, "Content-Type": type, "x-upsert": "false" },
+            body: bytes,
+        });
+        if (!res.ok) {
+            console.error("supabase private upload failed", res.status, await res.text().catch(() => ""));
+            return fail("storage_failed", "The image could not be stored. Please try again.");
+        }
+        return ok({ key });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+        const file = path.join(process.cwd(), "private-uploads", key);
+        await mkdir(path.dirname(file), { recursive: true });
+        await writeFile(file, bytes);
+        return ok({ key });
+    }
+    return fail("not_configured", "Image storage is not set up yet. Add the Supabase keys on the server.");
+}
+
+export async function readIdProof(key: string): Promise<Result<{ bytes: Uint8Array; type: string }>> {
+    // Only keys this app made are ever read, so a stored value can never point anywhere else.
+    if (!ID_KEY.test(key)) return fail("not_found", "Document not found");
+    const type = TYPE_OF_EXTENSION[key.slice(key.lastIndexOf(".") + 1)];
+    const supabase = supabaseConfig();
+
+    if (supabase) {
+        const res = await fetch(`${supabase.url}/storage/v1/object/${privateBucket()}/${key}`, { headers: { Authorization: `Bearer ${supabase.key}` } });
+        if (!res.ok) return fail("not_found", "Document not found");
+        return ok({ bytes: new Uint8Array(await res.arrayBuffer()), type });
+    }
+    try {
+        const { readFile } = await import("fs/promises");
+        return ok({ bytes: new Uint8Array(await readFile(path.join(process.cwd(), "private-uploads", key))), type });
+    } catch {
+        return fail("not_found", "Document not found");
+    }
+}
+
+export async function deleteIdProof(key: string): Promise<void> {
+    if (!ID_KEY.test(key)) return;
+    try {
+        const supabase = supabaseConfig();
+        if (supabase) {
+            await fetch(`${supabase.url}/storage/v1/object/${privateBucket()}/${key}`, { method: "DELETE", headers: { Authorization: `Bearer ${supabase.key}` } });
+        } else {
+            const { unlink } = await import("fs/promises");
+            await unlink(path.join(process.cwd(), "private-uploads", key));
+        }
+    } catch {
+        // A missing old file is not a problem.
+    }
+}

@@ -18,7 +18,7 @@ function waited(iso: string): string {
 // One booking as a card: the visit time leads because that is what the admin plans around.
 export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; overdue?: boolean }) {
   const { me } = useAdmin();
-  const alert = b.isStale || overdue;
+  const alert = b.isStale || overdue || b.reassignRequested;
   // The owner sees which store a booking belongs to once there is more than one store.
   const showStore = !!me?.isOwner && new Set(me.cities.map((c) => c.id)).size > 1;
   return (
@@ -47,7 +47,10 @@ export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; o
         {showStore && <span className="rounded bg-slate-100 px-1.5 text-[11px] text-slate-600">{b.storeName}</span>}
       </div>
       <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-        <span className={b.technicianName ? "text-slate-700" : "font-medium text-amber-700"}>{b.technicianName ? `Technician: ${b.technicianName}` : "No technician yet"}</span>
+        <span className={b.technicianName ? "text-slate-700" : "font-medium text-amber-700"}>
+          {b.technicianName ? `Technician: ${b.technicianName}` : "No technician yet"}
+          {b.reassignRequested && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Cannot attend</span>}
+        </span>
         <span className="flex items-center gap-2 text-slate-500">
           {b.status === "NEW" && <span className={b.isStale ? "font-semibold text-red-700" : ""}>Waiting {waited(b.createdAt)}</span>}
           <span className="font-semibold text-slate-800">₹{b.price}</span>

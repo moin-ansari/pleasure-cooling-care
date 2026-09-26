@@ -1,8 +1,13 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ImagePlus, Trash2 } from "lucide-react";
+import { MdWhatsapp } from "react-icons/md";
+import { BUSINESS } from "@/constants/business";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +91,12 @@ export default function TechnicianForm({ technician }: { technician?: Technician
   const [stores, setStores] = useState<StoreItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const photoRef = useRef<HTMLInputElement>(null);
+  const idRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState<"photo" | "id" | null>(null);
+  const [hasIdProof, setHasIdProof] = useState(technician?.hasIdProof ?? false);
+  // Shown once after a technician is created or their PIN changes. The PIN cannot be looked up again.
+  const [login, setLogin] = useState<{ id: string; name: string; email: string; phone: string; pin: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/service-areas?all=true")
@@ -160,8 +171,14 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       const json = await res.json();
       if (json.status === "success") {
         toast.success(json.message);
-        router.push("/admin/technicians");
-        router.refresh();
+        const id: string = json.data?.id ?? technician?.id;
+        if (form.pin) {
+          setLogin({ id, name: form.name, email: form.workEmail, phone: form.phone, pin: form.pin });
+          setSaving(false);
+        } else {
+          router.push(`/admin/technicians/${id}`);
+          router.refresh();
+        }
       } else {
         setError(json.message || "Could not save");
         setSaving(false);
@@ -171,6 +188,71 @@ export default function TechnicianForm({ technician }: { technician?: Technician
       setSaving(false);
     }
   };
+
+  const uploadPhoto = async (file: File) => {
+    setUploading("photo");
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      data.append("folder", "technicians");
+      const res = await fetch("/api/admin/upload", { method: "POST", body: data });
+      const json = await res.json();
+      if (json.status === "success") {
+        set("photo", json.data.url);
+        toast.success("Photo uploaded. Save to keep it.");
+      } else toast.error(json.message || "Could not upload the photo");
+    } catch {
+      toast.error("Could not upload the photo");
+    } finally {
+      setUploading(null);
+      if (photoRef.current) photoRef.current.value = "";
+    }
+  };
+
+  const uploadId = async (file: File) => {
+    if (!technician) return;
+    setUploading("id");
+    try {
+      const data = new FormData();
+      data.append("file", file);
+      const res = await fetch(`/api/admin/technicians/${technician.id}/id-proof`, { method: "POST", body: data });
+      const json = await res.json();
+      if (json.status === "success") {
+        setHasIdProof(true);
+        toast.success(json.message);
+      } else toast.error(json.message || "Could not save the document");
+    } catch {
+      toast.error("Could not save the document");
+    } finally {
+      setUploading(null);
+      if (idRef.current) idRef.current.value = "";
+    }
+  };
+
+  const removeId = async () => {
+    if (!technician || !window.confirm("Remove the ID document?")) return;
+    try {
+      const res = await fetch(`/api/admin/technicians/${technician.id}/id-proof`, { method: "DELETE" });
+      const json = await res.json();
+      if (json.status === "success") {
+        setHasIdProof(false);
+        toast.success(json.message);
+      } else toast.error(json.message || "Could not remove it");
+    } catch {
+      toast.error("Could not remove it");
+    }
+  };
+
+  const finishLogin = () => {
+    const id = login?.id;
+    setLogin(null);
+    router.push(id ? `/admin/technicians/${id}` : "/admin/technicians");
+    router.refresh();
+  };
+
+  const whatsappLogin = login
+    ? `https://wa.me/91${login.phone}?text=${encodeURIComponent(`Hi ${login.name.split(" ")[0]}, your ${BUSINESS.name} technician login:\nEmail: ${login.email}\nPIN: ${login.pin}\nOpen: ${typeof window !== "undefined" ? window.location.origin : ""}/technician/login\nPlease do not share your PIN.`)}`
+    : "";
 
   const remove = async () => {
     if (!technician || !window.confirm(`Delete ${technician.name}? This cannot be undone.`)) return;
@@ -194,7 +276,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
 
   return (
     <form onSubmit={save} className="mx-auto grid max-w-3xl gap-3">
-      <h1 className="text-xl font-semibold">{technician ? technician.name : "Add technician"}</h1>
+      <h1 className="text-xl font-semibold">{technician ? `Edit ${technician.name}` : "Add technician"}</h1>
 
       {technician && (
         <div className="flex flex-wrap gap-2 text-sm">
@@ -212,6 +294,26 @@ export default function TechnicianForm({ technician }: { technician?: Technician
           <CardTitle className="text-base">Personal details</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 px-3 pb-3 sm:grid-cols-2">
+          <div className="flex items-center gap-3 sm:col-span-2">
+            <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border bg-slate-100">
+              {form.photo ? <Image src={form.photo} alt="" fill sizes="80px" className="object-cover" unoptimized /> : <span className="flex h-full items-center justify-center text-2xl font-semibold text-slate-400">{form.name.trim()[0]?.toUpperCase() ?? "?"}</span>}
+            </div>
+            <div className="grid gap-1">
+              <input ref={photoRef} id="t-photo" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => e.target.files?.[0] && uploadPhoto(e.target.files[0])} />
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" disabled={uploading === "photo"} onClick={() => photoRef.current?.click()}>
+                  <ImagePlus className="mr-1 h-4 w-4" aria-hidden="true" /> {uploading === "photo" ? "Uploading..." : form.photo ? "Change photo" : "Add photo"}
+                </Button>
+                {form.photo && (
+                  <Button type="button" variant="ghost" size="sm" onClick={() => set("photo", "")}>
+                    Remove
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">A clear face photo. JPG, PNG or WebP, up to 2 MB.</p>
+            </div>
+          </div>
+
           <Field id="t-name" label="Full name">
             <Input id="t-name" {...bind("name")} />
           </Field>
@@ -354,6 +456,36 @@ export default function TechnicianForm({ technician }: { technician?: Technician
           <Field id="t-idnumber" label="ID number">
             <Input id="t-idnumber" autoComplete="off" {...bind("idNumber")} />
           </Field>
+
+          <div className="sm:col-span-2 rounded-lg border bg-slate-50 p-3">
+            <p className="text-sm font-medium">ID document photo</p>
+            {technician ? (
+              <>
+                <p className="mb-2 text-xs text-muted-foreground">Private. Only admins who can see this technician can open it.</p>
+                <input ref={idRef} id="t-idfile" type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => e.target.files?.[0] && uploadId(e.target.files[0])} />
+                <div className="flex flex-wrap items-center gap-2">
+                  {hasIdProof && (
+                    <Button asChild type="button" variant="outline" size="sm">
+                      <a href={`/api/admin/technicians/${technician.id}/id-proof`} target="_blank" rel="noopener noreferrer">
+                        View
+                      </a>
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" size="sm" disabled={uploading === "id"} onClick={() => idRef.current?.click()}>
+                    <ImagePlus className="mr-1 h-4 w-4" aria-hidden="true" /> {uploading === "id" ? "Uploading..." : hasIdProof ? "Replace" : "Add document"}
+                  </Button>
+                  {hasIdProof && (
+                    <Button type="button" variant="ghost" size="sm" className="text-red-600" onClick={removeId}>
+                      <Trash2 className="mr-1 h-4 w-4" aria-hidden="true" /> Remove
+                    </Button>
+                  )}
+                  <span className={`text-xs ${hasIdProof ? "text-emerald-700" : "text-muted-foreground"}`}>{hasIdProof ? "On file" : "Nothing on file"}</span>
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">Save the technician first, then add the ID photo from their edit screen.</p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -372,7 +504,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
           <span />
         )}
         <div className="flex gap-3">
-          <Button type="button" variant="outline" onClick={() => router.push("/admin/technicians")} disabled={saving}>
+          <Button type="button" variant="outline" onClick={() => router.push(technician ? `/admin/technicians/${technician.id}` : "/admin/technicians")} disabled={saving}>
             Cancel
           </Button>
           <Button type="submit" disabled={saving}>
@@ -380,6 +512,33 @@ export default function TechnicianForm({ technician }: { technician?: Technician
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={login !== null}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Login details for {login?.name}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="grid gap-1 text-sm text-muted-foreground">
+                <span>
+                  Email: <strong className="text-foreground">{login?.email}</strong>
+                </span>
+                <span>
+                  PIN: <strong className="font-mono text-lg text-foreground">{login?.pin}</strong>
+                </span>
+                <span className="pt-2">This PIN is shown only now and cannot be looked up later. Send it to the technician, then close this.</span>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:justify-between">
+            <Button asChild variant="outline">
+              <a href={whatsappLogin} target="_blank" rel="noopener noreferrer">
+                <MdWhatsapp className="mr-1.5 h-4 w-4" aria-hidden="true" /> Send on WhatsApp
+              </a>
+            </Button>
+            <AlertDialogAction onClick={finishLogin}>Done</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

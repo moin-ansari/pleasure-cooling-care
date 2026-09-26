@@ -2,12 +2,13 @@ import { db } from "@/lib/db";
 import { istDateString, slotToMinutes } from "@/lib/time";
 import { TECHNICIAN_TRANSITIONS, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
-import { JobStatusUpdateSchema } from "@/schema/technicianJob";
+import { logAudit } from "@/lib/audit";
+import { JobStatusUpdateSchema, ReassignRequestSchema } from "@/schema/technicianJob";
 import { commissionNote } from "./finance";
 import { getStoreTerms } from "./stores";
 import { splitCommission } from "@/lib/money";
 import { recomputeTechnicianStats } from "./reviews";
-import { notifyArriving, notifyCompleted, notifyDelayed } from "./notifications";
+import { notifyArriving, notifyCompleted, notifyDelayed, notifyReassignRequest } from "./notifications";
 import { fail, ok, type Result } from "./result";
 
 export interface JobListItem {
@@ -26,6 +27,7 @@ export interface JobListItem {
     confirmedArrivalAt: string | null;
     etaAt: string | null;
     isWarrantyRedo: boolean;
+    reassignRequested: boolean;
 }
 
 // Customer contact details are only included while the job is still open.
@@ -41,7 +43,13 @@ export interface JobDetail extends JobListItem {
     amountCollected: number | null;
     completedAt: string | null;
     nextStatuses: BookingStatusValue[];
+    // The technician has told the office they cannot attend, and is waiting for it to be reassigned.
+    reassignRequested: boolean;
+    canRequestReassignment: boolean;
 }
+
+// Once work has started, the job is theirs to finish. Before that they can hand it back.
+const CAN_HAND_BACK: BookingStatusValue[] = ["CONFIRMED", "ARRIVING", "DELAYED"];
 
 const OPEN: BookingStatusValue[] = ["CONFIRMED", "ARRIVING", "WORKING", "DELAYED"];
 
@@ -70,6 +78,7 @@ function toListItem(b: NonNullable<BookingRow>): JobListItem {
         confirmedArrivalAt: b.confirmedArrivalAt?.toISOString() ?? null,
         etaAt: b.etaAt?.toISOString() ?? null,
         isWarrantyRedo: !!b.warrantyClaimOfId,
+        reassignRequested: !!b.reassignRequestedAt,
     };
 }
 
@@ -88,6 +97,8 @@ function toDetail(b: NonNullable<BookingRow>): JobDetail {
         amountCollected: b.amountCollected,
         completedAt: b.completedAt?.toISOString() ?? null,
         nextStatuses: TECHNICIAN_TRANSITIONS[b.status],
+        reassignRequested: !!b.reassignRequestedAt,
+        canRequestReassignment: CAN_HAND_BACK.includes(b.status) && !b.reassignRequestedAt,
     };
 }
 
@@ -197,6 +208,38 @@ export async function updateJobStatus(technicianId: string, id: string, raw: unk
     if (update.status === "ARRIVING") await notifyArriving(id);
     else if (update.status === "DELAYED") await notifyDelayed(id);
     else if (update.status === "COMPLETED") await notifyCompleted(id);
+
+    const fresh = await loadRow(technicianId, id);
+    return ok(toDetail(fresh!));
+}
+
+// "Can't attend": flags the job for the office and tells the store's admin. The job stays with the technician until the
+// office reassigns it, and a technician can never cancel a job.
+export async function requestReassignment(technicianId: string, id: string, raw: unknown): Promise<Result<JobDetail>> {
+    const parsed = ReassignRequestSchema.safeParse(raw);
+    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
+
+    const current = await loadRow(technicianId, id);
+    if (!current) return fail("not_found", "Job not found");
+    if (!CAN_HAND_BACK.includes(current.status)) return fail("too_late", "Work has already started on this job, so it cannot be handed back. Please call the office.");
+    if (current.reassignRequestedAt) return fail("already_requested", "The office already knows. They will reassign this job.");
+
+    const flagged = await db.$transaction(async (tx) => {
+        // The status is part of the filter, so a job that just moved on is not flagged by mistake.
+        const result = await tx.booking.updateMany({
+            where: { id, technicianId, status: current.status, reassignRequestedAt: null },
+            data: { reassignRequestedAt: new Date(), reassignReason: parsed.data.reason },
+        });
+        if (result.count === 0) return false;
+        await tx.bookingStatusHistory.create({
+            data: { bookingId: id, fromStatus: current.status, toStatus: current.status, changedByType: "technician", changedById: technicianId, note: `Cannot attend, asked the office to reassign: ${parsed.data.reason}` },
+        });
+        return true;
+    });
+    if (!flagged) return fail("conflict", "This job was just updated. Please refresh.");
+
+    await logAudit({ actorType: "technician", actorId: technicianId, action: "booking.reassignRequest", entity: "Booking", entityId: id, after: { reason: parsed.data.reason } });
+    await notifyReassignRequest(id);
 
     const fresh = await loadRow(technicianId, id);
     return ok(toDetail(fresh!));

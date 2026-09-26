@@ -5,7 +5,7 @@ import type { Result } from "@/lib/domain/result";
 export const statusFor = (code: string): number => {
     if (code === "not_found") return 404;
     if (code === "forbidden") return 403;
-    if (["duplicate", "conflict", "in_use", "resolved", "has_cities", "has_history", "has_open_jobs", "has_balance"].includes(code)) return 409;
+    if (["duplicate", "conflict", "in_use", "resolved", "has_cities", "has_history", "has_open_jobs", "has_balance", "already_requested", "technician_off"].includes(code)) return 409;
     return 400;
 };
 

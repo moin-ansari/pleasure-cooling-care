@@ -22,6 +22,9 @@ export default function JobPage({ params }: { params: { id: string } }) {
   const [mode, setMode] = useState<Mode>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [handOpen, setHandOpen] = useState(false);
+  const [handReason, setHandReason] = useState("");
+  const [handBusy, setHandBusy] = useState(false);
 
   const [eta, setEta] = useState(30);
   const [reason, setReason] = useState("");
@@ -334,6 +337,57 @@ export default function JobPage({ params }: { params: { id: string } }) {
             </p>
           )}
         </section>
+      )}
+
+      {job.reassignRequested ? (
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+          <p className="font-semibold">You told the office you cannot attend</p>
+          <p className="mt-1">They will give this job to someone else. Until they do, it is still yours. Call the office if it is urgent.</p>
+        </section>
+      ) : (
+        job.canRequestReassignment && (
+          <section className="rounded-lg border bg-background p-4 shadow-sm">
+            {!handOpen ? (
+              <Button variant="outline" className="h-12 w-full text-base" onClick={() => setHandOpen(true)}>
+                I can&apos;t attend this job
+              </Button>
+            ) : (
+              <div className="grid gap-3">
+                <p className="text-sm text-muted-foreground">Tell the office why. They will reassign the job. You cannot cancel a job yourself.</p>
+                <label htmlFor="hand-reason" className="text-sm font-medium">
+                  Reason
+                </label>
+                <Input id="hand-reason" className="h-12 text-base" value={handReason} maxLength={200} onChange={(e) => setHandReason(e.target.value)} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Button variant="outline" className="h-12" onClick={() => setHandOpen(false)} disabled={handBusy}>
+                    Back
+                  </Button>
+                  <Button
+                    className="h-12"
+                    disabled={handBusy || handReason.trim().length < 3}
+                    onClick={async () => {
+                      setHandBusy(true);
+                      try {
+                        const json = await techFetch(`/api/technician/jobs/${job.id}/reassign`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason: handReason }) });
+                        if (json.status === "success") {
+                          toast.success(json.message);
+                          setJob(json.data);
+                          setHandOpen(false);
+                        } else toast.error(json.message || "Could not tell the office");
+                      } catch {
+                        // session errors are handled in techFetch
+                      } finally {
+                        setHandBusy(false);
+                      }
+                    }}
+                  >
+                    {handBusy ? "Sending..." : "Tell the office"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </section>
+        )
       )}
     </div>
   );

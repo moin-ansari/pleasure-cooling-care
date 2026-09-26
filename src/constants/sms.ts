@@ -83,6 +83,12 @@ export const SMS_TEMPLATES = {
         text: "Hi {#var#}, we could not approve your guarantee claim for booking {#var#}. Reason: {#var#}. Call {#var#} for help.",
         vars: ["name", "ref", "reason", "phone"],
     },
+    ADMIN_REASSIGN_REQUEST: {
+        label: "Technician cannot attend",
+        recipient: "admin",
+        text: "{#var#} cannot attend booking {#var#} on {#var#}. Reason: {#var#}. Reassign it: {#var#}",
+        vars: ["technician", "ref", "when", "reason", "url"],
+    },
     ADMIN_WARRANTY_CLAIM: {
         label: "Guarantee claim alert",
         recipient: "admin",

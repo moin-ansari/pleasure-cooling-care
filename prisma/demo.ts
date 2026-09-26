@@ -53,6 +53,7 @@ async function main() {
     // ---- wipe ----
     await db.review.deleteMany();
     await db.warrantyClaim.deleteMany();
+    await db.technicianUnavailability.deleteMany();
     await db.storeLedgerEntry.deleteMany();
     await db.ledgerEntry.deleteMany();
     await db.expense.deleteMany();

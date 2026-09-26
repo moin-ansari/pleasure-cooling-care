@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { assignBooking } from "@/lib/domain/adminBookings";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import { statusFor } from "@/helpers/respond";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 
         const result = await assignBooking(scope, params.id, await request.json());
         if (!result.ok) {
-            return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: result.code === "not_found" ? 404 : 400 });
+            return NextResponse.json({ status: "error", code: result.code, message: result.message }, { status: statusFor(result.code) });
         }
         return NextResponse.json({ status: "success", message: "Booking confirmed and assigned", data: result.data });
     } catch (error: any) {

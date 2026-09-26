@@ -44,7 +44,7 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
     }
   };
 
-  const submit = async () => {
+  const submit = async (acknowledgeOff = false): Promise<void> => {
     if (!selected) {
       setError("Choose a technician");
       return;
@@ -58,13 +58,17 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
       const res = await fetch(`/api/admin/bookings/${booking.id}/assign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ technicianId: selected, arrivalAt: arrival }),
+        body: JSON.stringify({ technicianId: selected, arrivalAt: arrival, ...(acknowledgeOff ? { acknowledgeOff: true } : {}) }),
       });
       const json = await res.json();
       if (json.status === "success") {
         toast.success(json.message);
         setOpen(false);
         onChanged(json.data);
+      } else if (json.code === "technician_off" && !acknowledgeOff) {
+        // They marked that day as not available. Assign only if the admin says so.
+        setBusy(false);
+        if (window.confirm(json.message)) return submit(true);
       } else {
         setError(json.message || "Could not assign");
       }
@@ -100,6 +104,7 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
               <span className="flex flex-wrap gap-1.5">
                 <Badge tone={t.worksInDistrict ? "good" : "warn"}>{t.worksInDistrict ? `Works in ${booking.district}` : `Not set for ${booking.district}`}</Badge>
                 {!t.sameStore && <Badge tone="warn">{t.storeName}</Badge>}
+                {t.isOffThatDay && <Badge tone="warn">Not available that day</Badge>}
                 <Badge tone={t.handlesAppliance ? "good" : "warn"}>
                   {t.handlesAppliance ? `Handles ${CATEGORY_LABELS[booking.applianceCategory]}` : `Not listed for ${CATEGORY_LABELS[booking.applianceCategory]}`}
                 </Badge>
@@ -133,7 +138,7 @@ export default function AssignPanel({ booking, onChanged }: { booking: AdminBook
         <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>
           Back
         </Button>
-        <Button onClick={submit} disabled={busy}>
+        <Button onClick={() => submit()} disabled={busy}>
           {busy ? "Saving..." : booking.status === "NEW" ? "Confirm and assign" : "Save"}
         </Button>
       </div>

@@ -4,6 +4,8 @@ export const AssignInputSchema = z.object({
     technicianId: z.string().min(1, "Choose a technician"),
     // Local India time from a datetime-local input, "YYYY-MM-DDTHH:mm".
     arrivalAt: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Choose the arrival date and time"),
+    // Set after the admin has seen that the technician marked that day as not available and chose to go ahead.
+    acknowledgeOff: z.boolean().optional(),
 });
 
 export const CancelInputSchema = z.object({

@@ -2,6 +2,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import AvailabilityCard from "@/components/custom/technician/AvailabilityCard";
 import JobStatusBadge from "@/components/custom/technician/JobStatusBadge";
 import { techFetch } from "@/components/custom/technician/techFetch";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
@@ -49,6 +50,8 @@ export default function JobsPage() {
     <div>
       <h1 className="mb-3 text-xl font-bold">My jobs</h1>
 
+      <AvailabilityCard />
+
       <div role="tablist" aria-label="Job lists" className="mb-4 grid grid-cols-3 rounded-lg bg-background p-1 shadow-sm">
         {TABS.map(({ key, label }) => (
           <button
@@ -75,6 +78,7 @@ export default function JobsPage() {
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <JobStatusBadge status={job.status} />
                   {job.isWarrantyRedo && <span className="text-xs font-medium text-purple-700">Free re-service</span>}
+                  {job.reassignRequested && <span className="text-xs font-medium text-red-700">Waiting for the office</span>}
                 </div>
                 <p className="text-lg font-semibold">
                   {friendlyDay(job.date)}, {job.time}

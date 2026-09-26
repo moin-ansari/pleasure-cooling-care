@@ -7,7 +7,8 @@ import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAdmin } from "@/components/custom/admin/AdminContext";
-import { EmptyState, ListSkeleton, PageTitle, RowCard } from "@/components/custom/admin/ui";
+import TeamAvailability from "@/components/custom/admin/TeamAvailability";
+import { Chips, EmptyState, ListSkeleton, PageTitle, RowCard } from "@/components/custom/admin/ui";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { TechnicianListItem } from "@/lib/domain/technicians";
 
@@ -27,6 +28,7 @@ function StatusPill({ t }: { t: TechnicianListItem }) {
 export default function TechniciansPage() {
   const router = useRouter();
   const { me } = useAdmin();
+  const [view, setView] = useState<"team" | "free">("team");
   const [technicians, setTechnicians] = useState<TechnicianListItem[] | null>(null);
 
   useEffect(() => {
@@ -50,7 +52,13 @@ export default function TechniciansPage() {
         }
       />
 
-      {technicians === null ? (
+      <div className="mb-3">
+        <Chips<"team" | "free"> label="View" value={view} onChange={setView} options={[{ key: "team", label: "Team" }, { key: "free", label: "Who is free" }]} />
+      </div>
+
+      {view === "free" ? (
+        <TeamAvailability showStore={!!me?.isOwner} />
+      ) : technicians === null ? (
         <ListSkeleton />
       ) : technicians.length === 0 ? (
         <EmptyState title="No technicians yet" text="Add the first technician to start assigning jobs." />

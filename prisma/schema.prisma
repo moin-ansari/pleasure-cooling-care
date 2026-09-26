@@ -255,6 +255,10 @@ model Booking {
   storeId      String
   store        Store       @relation(fields: [storeId], references: [id])
 
+  // Set when the technician says they cannot attend. The office sees it until the job is reassigned.
+  reassignRequestedAt DateTime?
+  reassignReason      String?
+
   warrantyClaimOfId String?
   warrantyClaimOf   Booking?  @relation("WarrantyRedo", fields: [warrantyClaimOfId], references: [id], onDelete: SetNull)
   warrantyRedos     Booking[] @relation("WarrantyRedo")

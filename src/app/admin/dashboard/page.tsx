@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardList, IndianRupee, MessageSquareWarning, PauseCircle, ShieldCheck, TrendingUp, Users } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ChevronRight, ClipboardList, IndianRupee, MessageSquareWarning, PauseCircle, ShieldCheck, TrendingUp, UserX, Users } from "lucide-react";
 import BookingCard from "@/components/custom/admin/BookingCard";
 import CitySwitcher from "@/components/custom/admin/CitySwitcher";
 import { EmptyState, ListSkeleton, Panel, StatTile } from "@/components/custom/admin/ui";
@@ -55,7 +55,7 @@ export default function Dashboard() {
 
   const day = new Date(`${istDateString()}T00:00:00+05:30`).toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" });
   const a = stats.attention;
-  const hasAlerts = stats.unassignedStale > 0 || a.delayed > 0 || a.pendingClaims > 0 || a.failedMessages > 0;
+  const hasAlerts = stats.unassignedStale > 0 || a.reassignRequests > 0 || a.delayed > 0 || a.pendingClaims > 0 || a.failedMessages > 0;
   const free = Math.max(stats.technicians.active - stats.technicians.busy, 0);
 
   return (
@@ -75,6 +75,11 @@ export default function Dashboard() {
           {a.delayed > 0 && (
             <Alert href="/admin/bookings" Icon={PauseCircle}>
               {a.delayed} {a.delayed === 1 ? "job is" : "jobs are"} delayed
+            </Alert>
+          )}
+          {a.reassignRequests > 0 && (
+            <Alert href="/admin/bookings" Icon={UserX}>
+              {a.reassignRequests} {a.reassignRequests === 1 ? "technician cannot" : "technicians cannot"} attend a job
             </Alert>
           )}
           {a.pendingClaims > 0 && (

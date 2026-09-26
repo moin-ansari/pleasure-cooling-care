@@ -167,6 +167,22 @@ export async function notifyPriceChanged(bookingId: string, oldPrice: number): P
     });
 }
 
+// The store's admin hears that a technician cannot attend, so the job can be given to someone else.
+export async function notifyReassignRequest(bookingId: string): Promise<void> {
+    await safely("reassign-request", async () => {
+        const b = await loadBooking(bookingId);
+        if (!b?.technician) return;
+        const adminPhone = await getAdminAlertPhone(b.storeId);
+        if (!adminPhone) return;
+        await dispatch({
+            template: "ADMIN_REASSIGN_REQUEST",
+            to: adminPhone,
+            bookingId,
+            vars: [b.technician.name, b.bookingRef, requestedWhen(b), b.reassignReason ?? "No reason given", absoluteUrl(`/admin/bookings/${b.id}`)],
+        });
+    });
+}
+
 export async function notifyWarrantyClaim(claimId: string): Promise<void> {
     await safely("claim", async () => {
         const claim = await db.warrantyClaim.findUnique({ where: { id: claimId }, include: { originalBooking: true } });

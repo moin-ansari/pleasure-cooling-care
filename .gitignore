@@ -38,3 +38,5 @@ next-env.d.ts
 
 # Local image uploads while developing
 /public/uploads/
+# Private documents while developing
+/private-uploads/

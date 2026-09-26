@@ -16,4 +16,9 @@ export const JobStatusUpdateSchema = z.discriminatedUnion("status", [
     }),
 ]);
 
+// "I cannot attend this job." The office decides who takes it. Technicians can never cancel.
+export const ReassignRequestSchema = z.object({
+    reason: z.string().trim().min(3, "Tell the office why you cannot attend").max(200),
+});
+
 export type JobStatusUpdate = z.infer<typeof JobStatusUpdateSchema>;
