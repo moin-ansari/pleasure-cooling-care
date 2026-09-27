@@ -2,9 +2,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Stars } from "@/components/custom/seo/ReviewsSection";
+import { Chips, EmptyState, ListSkeleton, PageTitle } from "@/components/custom/admin/ui";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { AdminReview } from "@/lib/domain/reviews";
 
@@ -59,26 +60,18 @@ export default function ReviewsPage() {
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-3">
-      <div>
-        <h1 className="text-xl font-semibold">Reviews</h1>
-        <p className="text-sm text-muted-foreground">Reviews are shown on the website straight away. Hide one if it is abusive or not genuine. Hidden reviews do not count towards a technician&apos;s rating.</p>
-      </div>
-      <div role="group" aria-label="Filter" className="flex gap-2">
-        {FILTERS.map((f) => (
-          <Button key={f.key} size="sm" variant={filter === f.key ? "default" : "outline"} aria-pressed={filter === f.key} onClick={() => setFilter(f.key)}>
-            {f.label}
-          </Button>
-        ))}
-      </div>
+      <PageTitle title="Reviews" sub="Shown on the website straight away. Hide one if it is abusive or not genuine. Hidden reviews do not count towards a technician's rating." />
+
+      <Chips label="Filter" value={filter} onChange={setFilter} options={FILTERS.map((f) => ({ key: f.key, label: f.label }))} />
 
       {!reviews ? (
-        <p className="py-10 text-center text-muted-foreground">Loading...</p>
+        <ListSkeleton rows={3} />
       ) : reviews.length === 0 ? (
-        <p className="py-10 text-center text-muted-foreground">No reviews here.</p>
+        <EmptyState title="No reviews here" text={filter === "all" ? "Reviews appear here once a customer rates a completed job." : "Try another filter."} />
       ) : (
-        reviews.map((r) => (
-          <Card key={r.id}>
-            <CardContent className="grid gap-2 p-4">
+        <ul className="grid gap-2.5">
+          {reviews.map((r) => (
+            <li key={r.id} className={`grid gap-2 rounded-xl border border-l-4 bg-white p-3 shadow-sm ${r.isPublic ? "border-l-emerald-500" : "border-l-slate-300"}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <Stars value={r.rating} />
                 <span className="text-xs text-muted-foreground">{r.date}</span>
@@ -86,19 +79,22 @@ export default function ReviewsPage() {
               {r.comment ? <p className="text-sm">{r.comment}</p> : <p className="text-sm text-muted-foreground">No comment</p>}
               <p className="text-xs text-muted-foreground">
                 <span className="font-medium text-foreground">{r.customerName}</span> · {r.serviceType} ({CATEGORY_LABELS[r.applianceCategory]}) · Technician {r.technicianName} ·{" "}
-                <Link href={`/admin/bookings/${r.bookingId}`} className="underline">
+                <Link href={`/admin/bookings/${r.bookingId}`} className="text-blue-700 hover:underline">
                   {r.bookingRef}
                 </Link>
               </p>
-              <div className="flex items-center justify-between gap-2">
-                <span className={`text-xs font-medium ${r.isPublic ? "text-green-700" : "text-amber-700"}`}>{r.isPublic ? "Shown on the website" : "Hidden"}</span>
+              <div className="flex items-center justify-between gap-2 border-t pt-2">
+                <span className={`inline-flex items-center gap-1 text-xs font-medium ${r.isPublic ? "text-emerald-700" : "text-amber-700"}`}>
+                  {r.isPublic ? <Eye className="h-3.5 w-3.5" aria-hidden="true" /> : <EyeOff className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {r.isPublic ? "Shown on the website" : "Hidden"}
+                </span>
                 <Button size="sm" variant="outline" onClick={() => toggle(r)} disabled={busyId === r.id}>
-                  {r.isPublic ? "Hide" : "Show"}
+                  {busyId === r.id ? "Saving..." : r.isPublic ? "Hide" : "Show"}
                 </Button>
               </div>
-            </CardContent>
-          </Card>
-        ))
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
