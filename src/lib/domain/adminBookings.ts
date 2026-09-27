@@ -40,9 +40,14 @@ export interface AdminBookingListItem {
     reassignRequested: boolean;
 }
 
+export type CategoryFilter = ApplianceCategoryValue | "all";
+
 export interface AdminBookingList {
     items: AdminBookingListItem[];
     counts: Record<BookingGroup, number>;
+    // How many bookings of each appliance are in the selected status group (and match the search), so the
+    // number on each tab answers "of what I'm looking at now, how many are AC vs a fridge vs...".
+    categoryCounts: Record<ApplianceCategoryValue, number>;
     page: number;
     pageCount: number;
     total: number;
@@ -78,8 +83,12 @@ function toListItem(b: Prisma.BookingGetPayload<{ include: typeof listInclude }>
     };
 }
 
-export async function listBookings(scope: AdminScope, options: { group?: BookingGroup; q?: string; page?: number }): Promise<AdminBookingList> {
+export async function listBookings(
+    scope: AdminScope,
+    options: { group?: BookingGroup; category?: CategoryFilter; q?: string; page?: number },
+): Promise<AdminBookingList> {
     const group = options.group ?? "new";
+    const category = options.category ?? "all";
     const page = Math.max(1, options.page ?? 1);
     const q = (options.q ?? "").trim();
     const digits = q.replace(/\D/g, "");
@@ -93,9 +102,11 @@ export async function listBookings(scope: AdminScope, options: { group?: Booking
               ],
           }
         : {};
-    const where: Prisma.BookingWhereInput = {
-        AND: [bookingWhere(scope), group === "all" ? {} : { status: { in: BOOKING_GROUP_STATUSES[group] } }, search],
-    };
+    const statusFilter: Prisma.BookingWhereInput = group === "all" ? {} : { status: { in: BOOKING_GROUP_STATUSES[group] } };
+    // Everything the category tabs are counted against: the current status group and search, but not the
+    // category itself, so a tab's own count reflects what picking it would show.
+    const beforeCategory: Prisma.BookingWhereInput = { AND: [bookingWhere(scope), statusFilter, search] };
+    const where: Prisma.BookingWhereInput = { AND: [beforeCategory, category === "all" ? {} : { applianceCategory: category }] };
 
     const orderBy: Prisma.BookingOrderByWithRelationInput[] =
         group === "active"
@@ -106,14 +117,16 @@ export async function listBookings(scope: AdminScope, options: { group?: Booking
                 ? [{ updatedAt: "desc" }]
                 : [{ date: "asc" }, { createdAt: "asc" }];
 
-    const [rows, total, statusCounts] = await Promise.all([
+    const [rows, total, statusCounts, categoryCounts] = await Promise.all([
         db.booking.findMany({ where, orderBy, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: listInclude }),
         db.booking.count({ where }),
         db.booking.groupBy({ by: ["status"], where: bookingWhere(scope), _count: { _all: true } }),
+        db.booking.groupBy({ by: ["applianceCategory"], where: beforeCategory, _count: { _all: true } }),
     ]);
 
     const byStatus = new Map(statusCounts.map((s) => [s.status, s._count._all]));
     const sum = (statuses: BookingStatusValue[]) => statuses.reduce((n, s) => n + (byStatus.get(s) ?? 0), 0);
+    const byCategory = new Map(categoryCounts.map((c) => [c.applianceCategory, c._count._all]));
 
     return {
         // Earliest visit first. Time slots are text, so the order within a day is fixed here.
@@ -126,6 +139,12 @@ export async function listBookings(scope: AdminScope, options: { group?: Booking
             completed: sum(BOOKING_GROUP_STATUSES.completed),
             cancelled: sum(BOOKING_GROUP_STATUSES.cancelled),
             all: statusCounts.reduce((n, s) => n + s._count._all, 0),
+        },
+        categoryCounts: {
+            AC: byCategory.get("AC") ?? 0,
+            REFRIGERATOR: byCategory.get("REFRIGERATOR") ?? 0,
+            WASHING_MACHINE: byCategory.get("WASHING_MACHINE") ?? 0,
+            GEYSER: byCategory.get("GEYSER") ?? 0,
         },
         page,
         pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),

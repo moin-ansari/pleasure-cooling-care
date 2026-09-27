@@ -3,23 +3,64 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Plus, Search } from "lucide-react";
+import { LayoutGrid, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
 import BookingCard from "@/components/custom/admin/BookingCard";
 import SchedulePanel from "@/components/custom/admin/SchedulePanel";
+import { CATEGORY_ICONS, CATEGORY_TONE } from "@/components/custom/admin/categoryIcons";
 import { Chips, EmptyState, ListSkeleton, PageTitle } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { BOOKING_GROUPS, BOOKING_GROUP_LABELS, type BookingGroup } from "@/constants/booking";
-import { CATEGORY_LABELS } from "@/constants/appliances";
-import type { AdminBookingList } from "@/lib/domain/adminBookings";
+import { APPLIANCE_CATEGORIES, CATEGORY_LABELS, type ApplianceCategoryValue } from "@/constants/appliances";
+import type { AdminBookingList, CategoryFilter } from "@/lib/domain/adminBookings";
+
+// Short labels: "Air Conditioner" does not fit on a tab, "AC" does.
+const CATEGORY_TAB_LABELS: Record<ApplianceCategoryValue, string> = {
+  AC: "AC",
+  REFRIGERATOR: "Fridge",
+  WASHING_MACHINE: "Washer",
+  GEYSER: "Geyser",
+};
+
+function CategoryTabs({ value, counts, onChange }: { value: CategoryFilter; counts?: Record<ApplianceCategoryValue, number>; onChange: (v: CategoryFilter) => void }) {
+  const total = counts ? APPLIANCE_CATEGORIES.reduce((n, c) => n + counts[c], 0) : undefined;
+  const tabs: { key: CategoryFilter; label: string; count?: number; Icon: React.ElementType; tone: string }[] = [
+    { key: "all", label: "All", count: total, Icon: LayoutGrid, tone: "bg-slate-100 text-slate-700" },
+    ...APPLIANCE_CATEGORIES.map((c) => ({ key: c, label: CATEGORY_TAB_LABELS[c], count: counts?.[c], Icon: CATEGORY_ICONS[c], tone: CATEGORY_TONE[c] })),
+  ];
+  return (
+    <div role="tablist" aria-label="Appliance" className="-mx-3 mb-3 flex gap-2 overflow-x-auto px-3 pb-1">
+      {tabs.map((t) => {
+        const active = value === t.key;
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.key)}
+            className={`flex min-w-[68px] shrink-0 flex-col items-center gap-1 rounded-xl border px-3 py-2 text-center ${active ? "border-blue-700 bg-blue-50" : "border-slate-200 bg-white"}`}
+          >
+            <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${t.tone}`}>
+              <t.Icon className="h-4 w-4" aria-hidden="true" />
+            </span>
+            <span className={`text-base font-bold leading-none ${active ? "text-blue-800" : "text-slate-900"}`}>{t.count ?? "-"}</span>
+            <span className={`text-[11px] leading-none ${active ? "text-blue-700" : "text-slate-500"}`}>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function BookingsPage() {
   const router = useRouter();
   const [view, setView] = useState<"list" | "schedule">("list");
   const [group, setGroup] = useState<BookingGroup>("new");
+  const [category, setCategory] = useState<CategoryFilter>("all");
   const [query, setQuery] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -37,7 +78,7 @@ export default function BookingsPage() {
   useEffect(() => {
     let cancelled = false;
     setData(null);
-    const params = new URLSearchParams({ group, page: String(page), ...(search ? { q: search } : {}) });
+    const params = new URLSearchParams({ group, category, page: String(page), ...(search ? { q: search } : {}) });
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
       .then((json) => {
@@ -49,10 +90,15 @@ export default function BookingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [group, search, page]);
+  }, [group, category, search, page]);
 
   const pick = (g: BookingGroup) => {
     setGroup(g);
+    setPage(1);
+  };
+
+  const pickCategory = (c: CategoryFilter) => {
+    setCategory(c);
     setPage(1);
   };
 
@@ -87,6 +133,8 @@ export default function BookingsPage() {
         <Input id="booking-search" className="h-11 bg-white pl-9" placeholder="Search name, phone or reference" value={query} onChange={(e) => setQuery(e.target.value)} />
       </div>
 
+      <CategoryTabs value={category} counts={data?.categoryCounts} onChange={pickCategory} />
+
       <div className="mb-3">
         <Chips
           label="Booking status"
@@ -99,7 +147,7 @@ export default function BookingsPage() {
       {data === null ? (
         <ListSkeleton />
       ) : data.items.length === 0 ? (
-        <EmptyState title={search ? "No bookings match your search" : "Nothing here yet"} />
+        <EmptyState title={search ? "No bookings match your search" : category !== "all" ? `No ${CATEGORY_TAB_LABELS[category].toLowerCase()} bookings here` : "Nothing here yet"} />
       ) : (
         <>
           {/* Phone and tablet: one card per booking, earliest visit first. */}
@@ -124,7 +172,9 @@ export default function BookingsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.items.map((b) => (
+                {data.items.map((b) => {
+                  const CatIcon = CATEGORY_ICONS[b.applianceCategory];
+                  return (
                   <TableRow key={b.id} className={`cursor-pointer ${b.isStale ? "bg-red-50 hover:bg-red-100" : ""}`} onClick={() => router.push(`/admin/bookings/${b.id}`)}>
                     <TableCell className="p-2">
                       <div className="font-medium">{friendlyDay(b.date)}</div>
@@ -136,7 +186,10 @@ export default function BookingsPage() {
                     </TableCell>
                     <TableCell className="p-2">
                       <div className="truncate">{b.serviceType}</div>
-                      <div className="truncate text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                        <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded ${CATEGORY_TONE[b.applianceCategory]}`}>
+                          <CatIcon className="h-2.5 w-2.5" aria-hidden="true" />
+                        </span>
                         {CATEGORY_LABELS[b.applianceCategory]}, {b.applianceSubType}
                       </div>
                     </TableCell>
@@ -150,7 +203,8 @@ export default function BookingsPage() {
                       <AdminStatusBadge status={b.status} />
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

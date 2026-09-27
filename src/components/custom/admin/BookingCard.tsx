@@ -3,6 +3,7 @@ import React from "react";
 import { MapPin, User } from "lucide-react";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
 import { useAdmin } from "@/components/custom/admin/AdminContext";
+import { CATEGORY_ICONS, CATEGORY_TONE } from "@/components/custom/admin/categoryIcons";
 import { RowCard } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { CATEGORY_LABELS } from "@/constants/appliances";
@@ -21,17 +22,23 @@ export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; o
   const alert = b.isStale || overdue || b.reassignRequested;
   // The owner sees which store a booking belongs to once there is more than one store.
   const showStore = !!me?.isOwner && new Set(me.cities.map((c) => c.id)).size > 1;
+  const CatIcon = CATEGORY_ICONS[b.applianceCategory];
   return (
     <RowCard href={`/admin/bookings/${b.id}`} tone={alert ? "alert" : undefined}>
       <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className={`text-sm font-semibold leading-5 ${alert ? "text-red-700" : "text-blue-800"}`}>
-            {friendlyDay(b.date)}, {b.time}
-            {overdue && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Overdue</span>}
-          </p>
-          <p className="text-sm font-medium leading-tight text-slate-900">
-            {b.serviceType} <span className="font-normal text-slate-500">· {CATEGORY_LABELS[b.applianceCategory]}</span>
-          </p>
+        <div className="flex min-w-0 items-start gap-2">
+          <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${CATEGORY_TONE[b.applianceCategory]}`}>
+            <CatIcon className="h-3.5 w-3.5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className={`text-sm font-semibold leading-5 ${alert ? "text-red-700" : "text-blue-800"}`}>
+              {friendlyDay(b.date)}, {b.time}
+              {overdue && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Overdue</span>}
+            </p>
+            <p className="text-sm font-medium leading-tight text-slate-900">
+              {b.serviceType} <span className="font-normal text-slate-500">· {CATEGORY_LABELS[b.applianceCategory]}</span>
+            </p>
+          </div>
         </div>
         <AdminStatusBadge status={b.status} />
       </div>

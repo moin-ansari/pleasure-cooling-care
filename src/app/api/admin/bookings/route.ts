@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createBookingForAdmin, listBookings } from "@/lib/domain/adminBookings";
+import { createBookingForAdmin, listBookings, type CategoryFilter } from "@/lib/domain/adminBookings";
 import { BOOKING_GROUPS, type BookingGroup } from "@/constants/booking";
+import { APPLIANCE_CATEGORIES } from "@/constants/appliances";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { respond, serverError } from "@/helpers/respond";
 
@@ -11,9 +12,10 @@ export async function GET(request: NextRequest) {
 
         const params = request.nextUrl.searchParams;
         const group = BOOKING_GROUPS.find((g) => g === params.get("group")) as BookingGroup | undefined;
+        const category = ([...APPLIANCE_CATEGORIES, "all"] as CategoryFilter[]).find((c) => c === params.get("category"));
         const page = Number(params.get("page") ?? "1");
 
-        const data = await listBookings(scope, { group, q: params.get("q") ?? "", page: Number.isFinite(page) ? page : 1 });
+        const data = await listBookings(scope, { group, category, q: params.get("q") ?? "", page: Number.isFinite(page) ? page : 1 });
         return NextResponse.json({ status: "success", data });
     } catch (error) {
         return serverError("admin bookings list failed", error);
