@@ -19,7 +19,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
         const key = `login:${ip}:${email}`;
 
-        if (isRateLimited(key, MAX_ATTEMPTS, WINDOW_MS)) {
+        if (await isRateLimited(key, MAX_ATTEMPTS, WINDOW_MS)) {
             return NextResponse.json({ status: "failed", message: "Too many attempts. Try again in 15 minutes." }, { status: 429 })
         }
 
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest, response: NextResponse) {
             return NextResponse.json({ status: "failed", message: "Invalid email or password" })
         }
 
-        clearRateLimit(key);
+        await clearRateLimit(key);
 
         const tokenPayload = {
             id: existingUser.id,

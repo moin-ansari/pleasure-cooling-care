@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { resendNotification } from "@/lib/domain/notifications";
 import { logAudit } from "@/lib/audit";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -21,6 +22,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         });
     } catch (error: any) {
         console.error("resend failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

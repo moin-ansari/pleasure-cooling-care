@@ -1,8 +1,13 @@
 "use client";
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { Button } from "@/components/ui/button";
 import { BUSINESS } from "@/constants/business";
 
-export default function SiteError({ reset }: { error: Error; reset: () => void }) {
+export default function SiteError({ error, reset }: { error: Error; reset: () => void }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
   return (
     <main className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-3 px-6 text-center">
       <h1 className="text-2xl font-semibold text-gray-800">This page could not load</h1>

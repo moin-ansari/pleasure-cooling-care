@@ -4,6 +4,7 @@ import { verifyTechnicianLogin } from "@/lib/domain/technicians";
 import { setTechnicianCookie, signTechnicianToken } from "@/lib/technicianAuth";
 import { isRateLimited } from "@/helpers/rateLimit";
 import { getClientIp } from "@/helpers/clientIp";
+import * as Sentry from "@sentry/nextjs";
 
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 
@@ -11,7 +12,7 @@ export async function POST(request: NextRequest) {
     try {
         const ip = getClientIp(request);
         // Wrong PINs are also counted per account in the database; this only slows bulk guessing from one place.
-        if (isRateLimited(`techlogin:ip:${ip}`, 30, FIFTEEN_MINUTES)) {
+        if (await isRateLimited(`techlogin:ip:${ip}`, 30, FIFTEEN_MINUTES)) {
             return NextResponse.json({ status: "failed", message: "Too many attempts. Please try again later." }, { status: 429 });
         }
 
@@ -27,6 +28,7 @@ export async function POST(request: NextRequest) {
         return response;
     } catch (error: any) {
         console.error("technician login failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong. Please try again." }, { status: 500 });
     }
 }

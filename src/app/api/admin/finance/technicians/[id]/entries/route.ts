@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { recordLedgerEntry } from "@/lib/domain/finance";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         return NextResponse.json({ status: "success", message: "Saved", data: result.data });
     } catch (error: any) {
         console.error("ledger entry failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

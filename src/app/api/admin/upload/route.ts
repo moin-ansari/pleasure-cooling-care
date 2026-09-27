@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { IMAGE_FOLDERS, MAX_IMAGE_BYTES, saveImage, type ImageFolder } from "@/lib/storage";
 import { getAdminScope, forbiddenResponse, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { isOwner } from "@/lib/scope";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
     try {
@@ -23,6 +24,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: "success", message: "Image uploaded", data: result.data });
     } catch (error: any) {
         console.error("upload failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

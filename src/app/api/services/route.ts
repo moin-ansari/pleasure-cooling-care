@@ -5,6 +5,7 @@ import { createServices, listServices, listServicesForAdmin } from "@/lib/domain
 import { getAdminId, unauthorizedResponse, getAdminScope, forbiddenResponse } from "@/helpers/requireAdmin";
 import { isOwner } from "@/lib/scope";
 import { STOREFRONT_TAG } from "@/lib/storefront";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest) {
     try {
@@ -21,6 +22,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ status: "success", data: await listServices({ activeOnly: true, category }) });
     } catch (error: any) {
         console.error("services list failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: "success", message: n === 1 ? "Service created" : `${n} services created`, data: result.data });
     } catch (error: any) {
         console.error("service create failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

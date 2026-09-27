@@ -4,6 +4,7 @@ import { bulkUpdateServices } from "@/lib/domain/services";
 import { getAdminId, unauthorizedResponse, getAdminScope, forbiddenResponse } from "@/helpers/requireAdmin";
 import { isOwner } from "@/lib/scope";
 import { STOREFRONT_TAG } from "@/lib/storefront";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest) {
     try {
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ status: "success", message: `${n} ${n === 1 ? "service" : "services"} updated`, data: result.data });
     } catch (error: any) {
         console.error("service bulk failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

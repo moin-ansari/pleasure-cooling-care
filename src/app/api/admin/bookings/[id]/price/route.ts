@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { updateBookingPrice } from "@/lib/domain/adminBookings";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -14,6 +15,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         return NextResponse.json({ status: "success", message: "Price updated", data: result.data });
     } catch (error: any) {
         console.error("price update failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

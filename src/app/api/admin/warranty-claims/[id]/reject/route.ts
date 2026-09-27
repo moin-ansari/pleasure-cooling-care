@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rejectWarrantyClaim } from "@/lib/domain/warranty";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         return NextResponse.json({ status: "success", message: "Claim declined", data: result.data });
     } catch (error: any) {
         console.error("claim reject failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteExpense, updateExpense } from "@/lib/domain/finance";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 type Context = { params: { id: string } };
 
@@ -15,6 +16,7 @@ export async function PUT(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", message: "Saved", data: result.data });
     } catch (error: any) {
         console.error("expense update failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
@@ -30,6 +32,7 @@ export async function DELETE(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", message: "Deleted" });
     } catch (error: any) {
         console.error("expense delete failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

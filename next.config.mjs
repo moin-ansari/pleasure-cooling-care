@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs/config";
+
 const noindex = [{ key: "X-Robots-Tag", value: "noindex, nofollow" }];
 
 // Service images uploaded to Supabase Storage are served from the project's own address.
@@ -21,4 +23,14 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+// Uploads source maps to Sentry so stack traces show real file names and line numbers, but only when the
+// three SENTRY_* build variables are set. Without them this just returns nextConfig unchanged, silently.
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: true,
+  disableLogger: true,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+  telemetry: false,
+});

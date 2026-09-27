@@ -4,6 +4,7 @@ import { deleteService, getService, patchService, updateService } from "@/lib/do
 import { getAdminId, unauthorizedResponse, getAdminScope, forbiddenResponse } from "@/helpers/requireAdmin";
 import { isOwner } from "@/lib/scope";
 import { STOREFRONT_TAG } from "@/lib/storefront";
+import * as Sentry from "@sentry/nextjs";
 
 type Context = { params: { id: string } };
 
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", data: service });
     } catch (error: any) {
         console.error("service get failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
@@ -37,6 +39,7 @@ export async function PUT(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", message: "Service updated", data: result.data });
     } catch (error: any) {
         console.error("service update failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
@@ -56,6 +59,7 @@ export async function PATCH(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", message: "Saved", data: result.data });
     } catch (error: any) {
         console.error("service patch failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
@@ -74,6 +78,7 @@ export async function DELETE(request: NextRequest, { params }: Context) {
         return NextResponse.json({ status: "success", message: "Service deleted" });
     } catch (error: any) {
         console.error("service delete failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

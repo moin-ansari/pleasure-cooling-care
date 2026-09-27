@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type { Result } from "@/lib/domain/result";
 
 // One place that turns a domain result into an HTTP answer, so every route reports problems the same way.
@@ -16,5 +17,6 @@ export function respond<T>(result: Result<T>, message: string | ((data: T) => st
 
 export const serverError = (label: string, error: unknown) => {
     console.error(label, error);
+    Sentry.captureException(error);
     return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
 };

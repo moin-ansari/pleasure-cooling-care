@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Script from "next/script";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,6 +54,53 @@ const newKey = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (el: HTMLElement, opts: { sitekey: string; callback: (token: string) => void; "expired-callback"?: () => void }) => string;
+      remove: (id: string) => void;
+    };
+  }
+}
+
+// Cloudflare's bot check, shown right before the customer confirms. Renders nothing when the site is not
+// configured with a Turnstile key, so the form works the same as before until the owner sets one up.
+function TurnstileWidget({ onToken }: { onToken: (token: string | null) => void }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const widgetId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!TURNSTILE_SITE_KEY) return;
+    let cancelled = false;
+    let poll: ReturnType<typeof setInterval> | undefined;
+
+    const render = () => {
+      if (cancelled || !hostRef.current || !window.turnstile) return;
+      widgetId.current = window.turnstile.render(hostRef.current, {
+        sitekey: TURNSTILE_SITE_KEY,
+        callback: (token) => onToken(token),
+        "expired-callback": () => onToken(null),
+      });
+    };
+
+    if (window.turnstile) render();
+    else poll = setInterval(() => window.turnstile && (clearInterval(poll), render()), 200);
+
+    return () => {
+      cancelled = true;
+      if (poll) clearInterval(poll);
+      if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
+      onToken(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!TURNSTILE_SITE_KEY) return null;
+  return <div ref={hostRef} className="flex justify-center" />;
+}
 
 function Field({
   id,
@@ -163,6 +211,7 @@ export default function BookingForm({
   const [bookingRef, setBookingRef] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locStatus, setLocStatus] = useState<"idle" | "loading" | "ok" | "failed">("idle");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const idempotencyKey = useRef(newKey());
 
   useEffect(() => {
@@ -209,6 +258,7 @@ export default function BookingForm({
           ...(coords ?? {}),
           ...readAttribution(),
           idempotencyKey: idempotencyKey.current,
+          ...(turnstileToken ? { turnstileToken } : {}),
         }),
       });
       const json = await res.json();
@@ -218,6 +268,7 @@ export default function BookingForm({
         reset({ ...pending, customerName: "", mobile: "", streetAddress: "", town: "", pincode: "" });
         setCoords(null);
         setLocStatus("idle");
+        setTurnstileToken(null);
       } else {
         toast.error(json.message || "Could not book. Please try again.");
       }
@@ -235,6 +286,7 @@ export default function BookingForm({
 
   return (
     <section id="bookingForm" aria-labelledby="booking-heading">
+      {TURNSTILE_SITE_KEY && <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" async defer />}
       <div className="px-3 py-6 pt-20 text-white bg-blue-800">
         <h2 id="booking-heading" className="text-lg font-semibold sm:w-1/2 sm:m-auto">
           Fill out form to book service now
@@ -421,6 +473,7 @@ export default function BookingForm({
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {pending !== null && <TurnstileWidget onToken={setTurnstileToken} />}
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPending(null)} disabled={submitting}>
               Edit details
@@ -430,7 +483,7 @@ export default function BookingForm({
                 e.preventDefault();
                 confirmBooking();
               }}
-              disabled={submitting}
+              disabled={submitting || (!!TURNSTILE_SITE_KEY && !turnstileToken)}
             >
               {submitting ? "Booking..." : "Confirm booking"}
             </AlertDialogAction>

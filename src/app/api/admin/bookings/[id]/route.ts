@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBookingDetail } from "@/lib/domain/adminBookings";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         return NextResponse.json({ status: "success", data: booking });
     } catch (error: any) {
         console.error("admin booking failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }

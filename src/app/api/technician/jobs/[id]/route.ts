@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJob } from "@/lib/domain/technicianJobs";
 import { getTechnicianId, technicianUnauthorized } from "@/lib/technicianAuth";
+import * as Sentry from "@sentry/nextjs";
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -14,6 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         return NextResponse.json({ status: "success", data: job });
     } catch (error: any) {
         console.error("technician job failed", error);
+        Sentry.captureException(error);
         return NextResponse.json({ status: "error", message: "Something went wrong" }, { status: 500 });
     }
 }
