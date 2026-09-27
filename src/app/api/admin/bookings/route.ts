@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createBookingForAdmin, listBookings, type CategoryFilter } from "@/lib/domain/adminBookings";
+import { createBookingForAdmin, listBookings } from "@/lib/domain/adminBookings";
 import { BOOKING_GROUPS, type BookingGroup } from "@/constants/booking";
-import { APPLIANCE_CATEGORIES } from "@/constants/appliances";
+import { APPLIANCE_CATEGORIES, type CategoryFilter } from "@/constants/appliances";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { respond, serverError } from "@/helpers/respond";
 

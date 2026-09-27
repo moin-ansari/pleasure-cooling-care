@@ -2,6 +2,9 @@ export const APPLIANCE_CATEGORIES = ["AC", "REFRIGERATOR", "WASHING_MACHINE", "G
 
 export type ApplianceCategoryValue = (typeof APPLIANCE_CATEGORIES)[number];
 
+// "all" plus every category, used by any list that can be filtered/tabbed by appliance.
+export type CategoryFilter = ApplianceCategoryValue | "all";
+
 export const CATEGORY_LABELS: Record<ApplianceCategoryValue, string> = {
     AC: "Air Conditioner",
     REFRIGERATOR: "Refrigerator",

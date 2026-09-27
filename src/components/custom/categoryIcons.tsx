@@ -3,7 +3,7 @@ import type { ApplianceCategoryValue } from "@/constants/appliances";
 
 // One glance-able icon per appliance, so a list of jobs reads as AC/fridge/washer/geyser without
 // having to read the category text on every row. Kept out of src/constants (framework-free) since
-// this pulls in React components.
+// this pulls in React components. Shared by the admin and technician portals.
 export const CATEGORY_ICONS: Record<ApplianceCategoryValue, LucideIcon> = {
   AC: Snowflake,
   REFRIGERATOR: Refrigerator,
@@ -18,7 +18,23 @@ export const CATEGORY_TONE: Record<ApplianceCategoryValue, string> = {
   GEYSER: "bg-orange-100 text-orange-700",
 };
 
+// Short enough to fit on a tab; "Air Conditioner" does not.
+export const CATEGORY_TAB_LABELS: Record<ApplianceCategoryValue, string> = {
+  AC: "AC",
+  REFRIGERATOR: "Fridge",
+  WASHING_MACHINE: "Washer",
+  GEYSER: "Geyser",
+};
+
 export function CategoryIcon({ category, className = "h-3.5 w-3.5" }: { category: ApplianceCategoryValue; className?: string }) {
   const Icon = CATEGORY_ICONS[category];
   return <Icon className={className} aria-hidden="true" />;
+}
+
+export function CategoryBadge({ category, size = "h-6 w-6", iconSize = "h-3.5 w-3.5" }: { category: ApplianceCategoryValue; size?: string; iconSize?: string }) {
+  return (
+    <span className={`flex shrink-0 items-center justify-center rounded-md ${size} ${CATEGORY_TONE[category]}`}>
+      <CategoryIcon category={category} className={iconSize} />
+    </span>
+  );
 }

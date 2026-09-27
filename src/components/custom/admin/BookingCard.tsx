@@ -3,7 +3,7 @@ import React from "react";
 import { MapPin, User } from "lucide-react";
 import AdminStatusBadge from "@/components/custom/admin/AdminStatusBadge";
 import { useAdmin } from "@/components/custom/admin/AdminContext";
-import { CATEGORY_ICONS, CATEGORY_TONE } from "@/components/custom/admin/categoryIcons";
+import { CATEGORY_ICONS, CATEGORY_TONE } from "@/components/custom/categoryIcons";
 import { RowCard } from "@/components/custom/admin/ui";
 import { friendlyDay } from "@/components/custom/technician/techFormat";
 import { CATEGORY_LABELS } from "@/constants/appliances";

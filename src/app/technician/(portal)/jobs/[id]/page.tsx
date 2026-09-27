@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import JobStatusBadge from "@/components/custom/technician/JobStatusBadge";
 import { techFetch } from "@/components/custom/technician/techFetch";
 import { clockTime, friendlyDay } from "@/components/custom/technician/techFormat";
+import { CategoryBadge } from "@/components/custom/categoryIcons";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import { mapsLinkFor } from "@/lib/maps";
 import type { JobDetail } from "@/lib/domain/technicianJobs";
@@ -124,13 +125,18 @@ export default function JobPage({ params }: { params: { id: string } }) {
           <JobStatusBadge status={job.status} />
           <span className="font-mono text-xs text-muted-foreground">{job.bookingRef}</span>
         </div>
-        <h1 className="text-xl font-bold">
-          {friendlyDay(job.date)}, {job.time}
-        </h1>
-        <p className="font-medium">{job.serviceType}</p>
-        <p className="text-sm text-muted-foreground">
-          {CATEGORY_LABELS[job.applianceCategory]} ({job.applianceSubType})
-        </p>
+        <div className="flex items-start gap-3">
+          <CategoryBadge category={job.applianceCategory} size="h-10 w-10" iconSize="h-5 w-5" />
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold">
+              {friendlyDay(job.date)}, {job.time}
+            </h1>
+            <p className="font-medium">{job.serviceType}</p>
+            <p className="text-sm text-muted-foreground">
+              {CATEGORY_LABELS[job.applianceCategory]} ({job.applianceSubType})
+            </p>
+          </div>
+        </div>
         {job.isWarrantyRedo && <p className="mt-2 text-sm font-medium text-purple-700">Free re-service under guarantee</p>}
         <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted-foreground">Quoted price</dt>

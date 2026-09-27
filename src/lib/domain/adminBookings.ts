@@ -9,7 +9,7 @@ import {
     type BookingGroup,
     type BookingStatusValue,
 } from "@/constants/booking";
-import type { ApplianceCategoryValue } from "@/constants/appliances";
+import type { ApplianceCategoryValue, CategoryFilter } from "@/constants/appliances";
 import { AssignInputSchema, BookingEditSchema, CancelInputSchema, NoteInputSchema, PriceInputSchema } from "@/schema/adminBooking";
 import { bookingWhere, canAccessStore, storeOnlyWhere, technicianWhere, type AdminScope } from "@/lib/scope";
 import { createBooking } from "./bookings";
@@ -39,8 +39,6 @@ export interface AdminBookingListItem {
     // The technician said they cannot attend and the job needs someone else.
     reassignRequested: boolean;
 }
-
-export type CategoryFilter = ApplianceCategoryValue | "all";
 
 export interface AdminBookingList {
     items: AdminBookingListItem[];
