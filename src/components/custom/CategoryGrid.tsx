@@ -36,7 +36,7 @@ export default function CategoryGrid({
               aria-pressed={active}
               className={`flex flex-col items-center gap-1.5 rounded-xl border bg-white p-2 text-center shadow-sm ${active ? "border-blue-700 ring-2 ring-blue-200" : "border-slate-100"}`}
             >
-              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+              <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                 <CategoryImage category={c} />
               </div>
               <div>
@@ -48,14 +48,14 @@ export default function CategoryGrid({
         })}
 
         <Link href="/track" className="flex flex-col items-center gap-1.5 rounded-xl border border-slate-100 bg-white p-2 text-center shadow-sm">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100">
             <ClipboardCheck className="h-6 w-6 text-blue-700" aria-hidden="true" />
           </div>
           <p className="text-xs font-semibold leading-tight text-slate-900">Track service</p>
         </Link>
 
         <a href={`tel:+91${BUSINESS.phone}`} className="flex flex-col items-center gap-1.5 rounded-xl border border-slate-100 bg-white p-2 text-center shadow-sm">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-slate-100">
+          <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-slate-100">
             <PhoneCall className="h-6 w-6 text-blue-700" aria-hidden="true" />
           </div>
           <p className="text-xs font-semibold leading-tight text-slate-900">Free consultation call</p>

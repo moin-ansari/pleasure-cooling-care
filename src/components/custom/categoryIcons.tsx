@@ -44,7 +44,8 @@ export function CategoryBadge({ category, size = "h-6 w-6", iconSize = "h-3.5 w-
 }
 
 // A real appliance photo once the owner supplies one at CATEGORY_IMAGES[category]; until then (or if it
-// 404s) this falls back to the tinted icon tile, never a broken-image glyph.
+// 404s) this falls back to the tinted icon tile, never a broken-image glyph. Photos can arrive at any
+// aspect ratio, so this fits the whole product inside the box (object-contain) rather than cropping it.
 export function CategoryImage({ category, className = "" }: { category: ApplianceCategoryValue; className?: string }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
@@ -60,7 +61,7 @@ export function CategoryImage({ category, className = "" }: { category: Applianc
       alt=""
       fill
       sizes="(max-width: 640px) 25vw, 200px"
-      className={`object-cover ${className}`}
+      className={`object-contain p-2 ${className}`}
       onError={() => setFailed(true)}
     />
   );
