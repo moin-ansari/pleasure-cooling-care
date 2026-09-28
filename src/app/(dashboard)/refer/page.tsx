@@ -42,7 +42,7 @@ export default function ReferPage() {
             call us
           </a>{" "}
           or{" "}
-          <Link href="/home#bookingForm" className="text-blue-700 underline">
+          <Link href="/home#services" className="text-blue-700 underline">
             book online
           </Link>
           .

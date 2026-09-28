@@ -19,6 +19,8 @@ const nextConfig = {
       { source: "/login", headers: noindex },
 
       { source: "/track", headers: noindex },
+      { source: "/cart", headers: noindex },
+      { source: "/checkout", headers: noindex },
     ];
   },
 };

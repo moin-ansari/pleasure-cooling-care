@@ -6,6 +6,11 @@ export const MAX_BOOKING_DAYS_AHEAD = 30;
 // A slot must start at least this many minutes from now when booking for today.
 export const MIN_LEAD_MINUTES = 60;
 
+// A cart line can hold at most this many of the same service, and a checkout at most this many units total
+// (summed across all lines) — keeps one order to a sane size for a single technician visit.
+export const MAX_QTY_PER_LINE = 5;
+export const MAX_TOTAL_UNITS = 10;
+
 export type BookingStatusValue = "NEW" | "CONFIRMED" | "ARRIVING" | "WORKING" | "DELAYED" | "COMPLETED" | "CANCELLED";
 
 // Order of an active booking's life; used for the cancellation cutoff.

@@ -116,7 +116,7 @@ export default async function AboutPage() {
         <ReviewsSection reviews={reviews.reviews} summary={reviews.summary} />
 
         <section className="px-3 pb-6 text-center">
-          <Link href="/home#bookingForm" className="inline-block rounded-md bg-primary px-6 py-3 text-primary-foreground font-medium">
+          <Link href="/home#services" className="inline-block rounded-md bg-primary px-6 py-3 text-primary-foreground font-medium">
             Book a service
           </Link>
         </section>

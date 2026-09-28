@@ -1,5 +1,8 @@
+"use client";
 import Image from "next/image";
-import React from "react";
+import React, { useState } from "react";
+import toast from "react-hot-toast";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,8 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Link from "next/link";
 import { Separator } from "@/components/ui/separator";
+import { useCart } from "@/components/custom/CartProvider";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { ServiceItem } from "@/types/service";
 
@@ -19,6 +22,8 @@ interface ServiceGroup {
   category: ServiceItem["applianceCategory"];
   serviceType: string;
   subTypes: string[];
+  // Same order as subTypes, so picking a subtype resolves to the exact Service row to add to the cart.
+  serviceIds: string[];
   price: number;
   image: string | null;
   desc: string[];
@@ -33,12 +38,14 @@ function groupServices(services: ServiceItem[]): ServiceGroup[] {
     const existing = groups.get(key);
     if (existing) {
       existing.subTypes.push(s.applianceSubType);
+      existing.serviceIds.push(s.id);
     } else {
       groups.set(key, {
         key,
         category: s.applianceCategory,
         serviceType: s.serviceType,
         subTypes: [s.applianceSubType],
+        serviceIds: [s.id],
         price: s.price,
         image: s.image,
         desc: s.desc,
@@ -47,6 +54,60 @@ function groupServices(services: ServiceItem[]): ServiceGroup[] {
     }
   }
   return Array.from(groups.values());
+}
+
+function AddToCartButton({ group }: { group: ServiceGroup }) {
+  const { addToCart } = useCart();
+  const [subIndex, setSubIndex] = useState(0);
+  const [choosing, setChoosing] = useState(false);
+  const multi = group.subTypes.length > 1;
+
+  const add = (index: number) => {
+    addToCart(group.serviceIds[index]);
+    setChoosing(false);
+    toast.success(
+      (t) => (
+        <span className="flex items-center gap-3">
+          Added to cart
+          <Link href="/cart" className="font-semibold text-blue-700 underline" onClick={() => toast.dismiss(t.id)}>
+            View cart
+          </Link>
+        </span>
+      ),
+      { duration: 3000 }
+    );
+  };
+
+  if (multi && choosing) {
+    return (
+      <div className="grid gap-1.5">
+        <label htmlFor={`sub-${group.key}`} className="sr-only">
+          Choose the type
+        </label>
+        <select
+          id={`sub-${group.key}`}
+          className="h-8 rounded-md border border-input bg-background px-1.5 text-xs"
+          value={subIndex}
+          onChange={(e) => setSubIndex(Number(e.target.value))}
+        >
+          {group.subTypes.map((t, i) => (
+            <option key={t} value={i}>
+              {t}
+            </option>
+          ))}
+        </select>
+        <Button variant="default" className="h-8 w-full" onClick={() => add(subIndex)}>
+          Add to cart
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <Button variant="default" className="h-8 w-full" onClick={() => (multi ? setChoosing(true) : add(0))}>
+      Add to cart
+    </Button>
+  );
 }
 
 const ServiceCard = ({ services }: { services: ServiceItem[] }) => {
@@ -106,9 +167,7 @@ const ServiceCard = ({ services }: { services: ServiceItem[] }) => {
                     alt={`${element.serviceType} service`}
                   />
                   <div className="py-3">
-                    <Button variant={"default"} className="h-8 w-full" asChild>
-                      <Link href="#bookingForm">Book Request</Link>
-                    </Button>
+                    <AddToCartButton group={element} />
                   </div>
                 </div>
               </div>

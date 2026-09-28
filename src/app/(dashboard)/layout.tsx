@@ -1,15 +1,15 @@
-import UserHeader from "@/components/custom/userHeader";
+import CartProvider from "@/components/custom/CartProvider";
+import StorefrontBottomNav from "@/components/custom/StorefrontBottomNav";
 
 export default function Dashboard({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
-    <div>
-      <UserHeader />
-      {children}
-    </div>
+    <CartProvider>
+      <div className="pb-20">{children}</div>
+      <StorefrontBottomNav />
+    </CartProvider>
   );
 }

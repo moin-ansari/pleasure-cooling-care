@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import Footer from "@/components/custom/footer";
-import BookingForm from "@/components/custom/bookingForm";
-import Contact from "@/components/custom/contact";
 import HeroSection from "@/components/custom/hero";
-import StorefrontTopBar from "@/components/custom/StorefrontTopBar";
 import ServicesBrowser from "@/components/custom/ServicesBrowser";
 import CustomerExperience from "@/components/custom/CustomerExperience";
 import BrandsStrip from "@/components/custom/BrandsStrip";
@@ -39,16 +36,13 @@ const Home = async () => {
   return (
     <div>
       <JsonLd data={localBusinessJsonLd(areas, reviews)} />
-      <StorefrontTopBar areas={areas} />
-      <HeroSection districts={areas.map((a) => a.district)} />
+      <HeroSection areas={areas} />
       <ServicesBrowser services={services} />
       <CustomerExperience reviews={reviews.reviews} summary={reviews.summary} completedJobs={stats.completedJobs} areaCount={areas.length} />
       <BrandsStrip />
       <OurProfessionals technicians={technicians} />
       <CoverageLinks areas={areas} services={services} />
       <ReferAndEarn />
-      <BookingForm services={services} areas={areas} />
-      <Contact />
       <Footer />
     </div>
   );

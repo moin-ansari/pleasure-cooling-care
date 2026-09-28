@@ -1,7 +1,6 @@
 import React from 'react';
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { MdAcUnit, MdKitchen, MdLocalLaundryService, MdWaterDrop } from "react-icons/md";
+import StorefrontTopBar from "@/components/custom/StorefrontTopBar";
+import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
 
 const SNOWFLAKE_COUNT = 55;
 const snowflakes = Array.from({ length: SNOWFLAKE_COUNT }, (_, i) => {
@@ -14,16 +13,9 @@ const snowflakes = Array.from({ length: SNOWFLAKE_COUNT }, (_, i) => {
   return { left, size, duration, delay, swayDuration, opacity };
 });
 
-const appliances = [
-  { label: "AC", Icon: MdAcUnit },
-  { label: "Refrigerator", Icon: MdKitchen },
-  { label: "Washing Machine", Icon: MdLocalLaundryService },
-  { label: "Geyser", Icon: MdWaterDrop },
-];
-
-const HeroSection = ({ districts = [] }: { districts?: string[] }) => {
-  const where = districts.length ? ` in ${districts.join(" and ")}` : "";
-
+// Short, app-shell hero: the location/time strip up top, then one compact line of promo copy —
+// everything else (appliance picker, contact/book buttons) now lives in the tile grid and bottom nav.
+const HeroSection = ({ areas = [] }: { areas?: ServiceAreaItem[] }) => {
   return (
     <div className="relative overflow-hidden bg-gradient-to-b from-sky-400 via-sky-600 to-blue-800">
       <div className="snowfall-layer" aria-hidden="true">
@@ -43,28 +35,11 @@ const HeroSection = ({ districts = [] }: { districts?: string[] }) => {
           />
         ))}
       </div>
-      <div className="relative z-10 py-5 px-3 text-center md:w-1/2 md:m-auto">
-        <h1 className="text-4xl text-white font-bold mt-8 mb-8">Home appliance repair &amp; installation{where}</h1>
-        <p className="text-1xl text-white font-medium">
-          AC, refrigerator, washing machine and geyser service at your doorstep. Book online and track your booking with just your mobile number.
-        </p>
-        <Button variant={"link"} className="w-1/2 text-white mb-6" asChild>
-          <Link href="#services" className="text-yellow-300 italic underline underline-offset-8">See our services and prices</Link>
-        </Button>
-        <h2 className="text-1xl text-white font-medium">Providing all services at your doorstep</h2>
-        <ul className="grid grid-cols-4 items-start justify-between text-1xl text-white font-medium pt-6 pb-4 gap-2">
-          {appliances.map(({ label, Icon }) => (
-            <li key={label} className="flex flex-col items-center">
-              <Icon className="h-6 w-6 text-yellow-300" aria-hidden="true" />
-              <span className="tracking-wide">{label}</span>
-            </li>
-          ))}
-        </ul>
-        <div className="flex mt-4 gap-4 justify-between">
-          <Button variant={"secondary"} className="w-1/2"><Link href="#contact">Contact Me</Link></Button>
-          <Button variant={"default"} className="w-1/2" asChild>
-            <Link href="#bookingForm">Book a Service Now</Link>
-          </Button>
+      <div className="relative z-10">
+        <StorefrontTopBar areas={areas} />
+        <div className="px-3 pb-6 pt-4 sm:px-6">
+          <h1 className="text-lg font-bold text-white">Home appliance repair, at your doorstep</h1>
+          <p className="mt-0.5 text-sm text-blue-100">AC, refrigerator, washing machine &amp; geyser — book online, pay after the work is done.</p>
         </div>
       </div>
     </div>

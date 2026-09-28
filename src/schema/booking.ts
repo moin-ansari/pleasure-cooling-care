@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TIME_SLOTS } from "@/constants/booking";
+import { MAX_QTY_PER_LINE, MAX_TOTAL_UNITS, TIME_SLOTS } from "@/constants/booking";
 
 export const BookingInputSchema = z.object({
     customerName: z.string().trim().min(2, "Enter your name").max(80),
@@ -21,6 +21,20 @@ export const BookingInputSchema = z.object({
 });
 
 export type BookingInput = z.infer<typeof BookingInputSchema>;
+
+export const BookingBatchInputSchema = BookingInputSchema.omit({ serviceId: true })
+    .extend({
+        items: z
+            .array(z.object({ serviceId: z.string().min(1), qty: z.number().int().min(1).max(MAX_QTY_PER_LINE) }))
+            .min(1, "Your cart is empty")
+            .max(10, "Too many different items in one order"),
+    })
+    .refine((v) => v.items.reduce((n, i) => n + i.qty, 0) <= MAX_TOTAL_UNITS, {
+        message: `An order can have at most ${MAX_TOTAL_UNITS} units in total`,
+        path: ["items"],
+    });
+
+export type BookingBatchInput = z.infer<typeof BookingBatchInputSchema>;
 
 export const TrackInputSchema = z.object({
     mobile: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10 digit mobile number"),

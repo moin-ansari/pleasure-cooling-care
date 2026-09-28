@@ -49,7 +49,7 @@ export function CategoryImage({ category, className = "" }: { category: Applianc
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
-      <div className={`flex items-center justify-center ${CATEGORY_TONE[category]} ${className}`}>
+      <div className={`absolute inset-0 flex h-full w-full items-center justify-center ${CATEGORY_TONE[category]} ${className}`}>
         <CategoryIcon category={category} className="h-8 w-8" />
       </div>
     );

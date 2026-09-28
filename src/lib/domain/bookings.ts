@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { generateBookingRef } from "@/lib/bookingRef";
 import { normalizeIndianMobile } from "@/lib/phone";
 import { addDaysToDateString, istDateString, istDateToUtc, istMinutesOfDay, slotToMinutes } from "@/lib/time";
-import { BookingInputSchema, CancelInputSchema, TrackInputSchema } from "@/schema/booking";
+import { BookingBatchInputSchema, BookingInputSchema, CancelInputSchema, TrackInputSchema } from "@/schema/booking";
 import { MAX_BOOKING_DAYS_AHEAD, MIN_LEAD_MINUTES, isCancellableByCustomer, type BookingStatusValue } from "@/constants/booking";
 import type { ApplianceCategoryValue } from "@/constants/appliances";
 import { canReviewBooking, type ReviewState } from "./reviews";
@@ -118,6 +118,114 @@ export async function createBooking(
         }
     }
     return fail("unknown", "Could not create the booking");
+}
+
+export interface BatchBookingResult {
+    bookings: { bookingRef: string; price: number; serviceType: string }[];
+    total: number;
+}
+
+// The cart: one visit, several services. Shares one set of customer/address/date/time checks, then creates
+// one Booking row per unit (a "qty 2" line becomes 2 independent, separately trackable bookings) atomically
+// — either the whole order is created or none of it is, so a bad line never leaves a partial order behind.
+export async function createBookingBatch(raw: unknown, options: { source?: BookingSource } = {}): Promise<Result<BatchBookingResult>> {
+    const parsed = BookingBatchInputSchema.safeParse(withNormalizedMobile(raw));
+    if (!parsed.success) return fail("invalid", parsed.error.issues[0].message);
+    const input = parsed.data;
+
+    const today = istDateString();
+    if (input.date < today || input.date > addDaysToDateString(today, MAX_BOOKING_DAYS_AHEAD)) {
+        return fail("invalid_date", `Choose a date within the next ${MAX_BOOKING_DAYS_AHEAD} days`);
+    }
+    if (input.date === today && slotToMinutes(input.time) < istMinutesOfDay() + MIN_LEAD_MINUTES) {
+        return fail("invalid_time", "That time has passed. Choose a later slot or another day.");
+    }
+
+    if (await db.blockedPhone.findUnique({ where: { mobile: input.mobile } })) {
+        return fail("blocked", "Unable to book with this number. Please contact us.");
+    }
+
+    const area = await checkCoverage(input.serviceAreaId);
+    if (!area) return fail("out_of_area", "Sorry, we don't serve this area yet");
+
+    // Idempotent per line: a retried submit (e.g. a flaky connection) reuses the same rows instead of
+    // duplicating the order.
+    if (input.idempotencyKey) {
+        const existing = await db.booking.findMany({
+            where: { idempotencyKey: { in: input.items.flatMap((item, i) => Array.from({ length: item.qty }, (_, n) => `${input.idempotencyKey}-${i}-${n}`)) } },
+            select: { bookingRef: true, price: true, serviceType: true, mobile: true },
+        });
+        const expectedCount = input.items.reduce((n, i) => n + i.qty, 0);
+        if (existing.length === expectedCount && existing.every((b) => b.mobile === input.mobile)) {
+            return ok({ bookings: existing.map(({ bookingRef, price, serviceType }) => ({ bookingRef, price, serviceType })), total: existing.reduce((n, b) => n + b.price, 0) });
+        }
+    }
+
+    const serviceIds = Array.from(new Set(input.items.map((i) => i.serviceId)));
+    const services = await db.service.findMany({ where: { id: { in: serviceIds }, isActive: true } });
+    const byId = new Map(services.map((s) => [s.id, s]));
+    const missing = serviceIds.find((id) => !byId.has(id));
+    if (missing) return fail("service_unavailable", "One of the items in your cart is no longer available. Please remove it and try again.");
+
+    const dateUtc = istDateToUtc(input.date);
+    const rows = input.items.flatMap((item, i) => {
+        const service = byId.get(item.serviceId)!;
+        return Array.from({ length: item.qty }, (_, n) => ({
+            n,
+            i,
+            data: {
+                source: options.source ?? "WEB",
+                status: "NEW" as const,
+                storeId: area.storeId,
+                idempotencyKey: input.idempotencyKey ? `${input.idempotencyKey}-${i}-${n}` : undefined,
+                customerName: input.customerName,
+                mobile: input.mobile,
+                streetAddress: input.streetAddress,
+                town: input.town,
+                pincode: input.pincode,
+                serviceAreaId: area.id,
+                lat: input.lat,
+                lng: input.lng,
+                date: dateUtc,
+                time: input.time,
+                serviceId: service.id,
+                applianceCategory: service.applianceCategory,
+                applianceSubType: service.applianceSubType,
+                serviceType: service.serviceType,
+                price: service.price,
+                utmSource: input.utmSource,
+                utmMedium: input.utmMedium,
+                utmCampaign: input.utmCampaign,
+                clickId: input.clickId,
+                statusHistory: { create: { toStatus: "NEW" as const, changedByType: "customer" as const } },
+            },
+        }));
+    });
+
+    try {
+        const created = await db.$transaction(async (tx) => {
+            const out: { id: string; bookingRef: string; price: number; serviceType: string }[] = [];
+            for (const row of rows) {
+                let inserted = false;
+                for (let attempt = 0; attempt < 3 && !inserted; attempt++) {
+                    try {
+                        const booking = await tx.booking.create({ data: { ...row.data, bookingRef: generateBookingRef() } });
+                        out.push({ id: booking.id, bookingRef: booking.bookingRef, price: booking.price, serviceType: booking.serviceType });
+                        inserted = true;
+                    } catch (error) {
+                        const collision = error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+                        if (!collision || attempt === 2) throw error;
+                    }
+                }
+            }
+            return out;
+        });
+
+        for (const b of created) await notifyBookingReceived(b.id);
+        return ok({ bookings: created.map(({ bookingRef, price, serviceType }) => ({ bookingRef, price, serviceType })), total: created.reduce((n, b) => n + b.price, 0) });
+    } catch {
+        return fail("unknown", "Could not create the order. Please try again.");
+    }
 }
 
 // Deliberately returns limited fields: no street address and no phone number.
