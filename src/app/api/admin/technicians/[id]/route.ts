@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { UpdateTechnicianSchema } from "@/schema/technician";
 import { deleteTechnician, getTechnician, updateTechnician } from "@/lib/domain/technicians";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { respond, serverError } from "@/helpers/respond";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { STOREFRONT_TAG } from "@/lib/storefront";
 
 type Context = { params: { id: string } };
 
@@ -31,6 +33,9 @@ export async function PUT(request: NextRequest, { params }: Context) {
 
         const result = await updateTechnician(scope, params.id, parsed.data);
         if (!result.ok) return respond(result, "");
+        // Cheap and infrequent enough to just always refresh the public technicians list, rather than
+        // tracking whether name/photo/showOnWebsite specifically changed.
+        revalidateTag(STOREFRONT_TAG);
         return NextResponse.json({ status: "success", message: "Technician updated", data: await getTechnician(scope, params.id) });
     } catch (error) {
         return serverError("technician update failed", error);

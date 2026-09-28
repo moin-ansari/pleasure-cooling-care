@@ -51,6 +51,7 @@ export interface TechnicianDetail extends Omit<TechnicianListItem, "districts" |
     // Only whether a document is on file. The image itself is private and is read through its own route.
     hasIdProof: boolean;
     joinedAt: string;
+    showOnWebsite: boolean;
 }
 
 const NOT_FINISHED = ["NEW", "CONFIRMED", "ARRIVING", "WORKING", "DELAYED"] as const;
@@ -120,6 +121,7 @@ export async function getTechnician(scope: AdminScope, id: string): Promise<Tech
         isActive: t.isActive,
         isLocked: !!t.lockedUntil && t.lockedUntil > new Date(),
         joinedAt: t.joinedAt.toISOString(),
+        showOnWebsite: t.showOnWebsite,
         storeId: t.storeId,
         storeName: t.store.name,
     };
@@ -143,6 +145,7 @@ function profileData(input: CreateTechnicianInput | UpdateTechnicianInput) {
         idType: input.idType ?? null,
         idNumber: input.idNumber ?? null,
         isActive: input.isActive,
+        showOnWebsite: input.showOnWebsite,
     };
 }
 
@@ -336,4 +339,40 @@ export async function getTechnicianSelf(id: string): Promise<TechnicianSelf | nu
         districts: t.serviceAreas.map((a) => a.district),
         nextRank: nextRankProgress(t.rank, t.jobsCompletedCount, t.averageRating, thresholds),
     };
+}
+
+// ---------- public (storefront) ----------
+
+export interface PublicTechnician {
+    id: string;
+    name: string;
+    photo: string | null;
+    rank: TechnicianListItem["rank"];
+    averageRating: number;
+    ratingCount: number;
+    experienceYears: number | null;
+    specializations: ApplianceCategoryValue[];
+    jobsCompletedCount: number;
+}
+
+// Shown on the website only when the admin has deliberately opted this technician in. Never selects phone,
+// workEmail, address, age, gender, bank or ID fields — this is a public, unauthenticated read.
+export async function listPublicTechnicians(limit = 12): Promise<PublicTechnician[]> {
+    const rows = await db.technician.findMany({
+        where: { showOnWebsite: true, isActive: true },
+        orderBy: [{ rank: "desc" }, { averageRating: "desc" }, { jobsCompletedCount: "desc" }],
+        take: limit,
+        select: {
+            id: true,
+            name: true,
+            photo: true,
+            rank: true,
+            averageRating: true,
+            ratingCount: true,
+            experienceYears: true,
+            specializations: true,
+            jobsCompletedCount: true,
+        },
+    });
+    return rows;
 }

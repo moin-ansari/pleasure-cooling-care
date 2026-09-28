@@ -198,6 +198,8 @@ model Technician {
   averageRating      Float                      @default(0)
   ratingCount        Int                        @default(0)
   isActive           Boolean                    @default(true)
+  // Admin opt-in, off by default: whether this technician's name/photo/rating appear on the public website.
+  showOnWebsite      Boolean                    @default(false)
   storeId            String
   store              Store                      @relation(fields: [storeId], references: [id])
   bookings           Booking[]

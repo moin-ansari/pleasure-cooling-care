@@ -6,7 +6,7 @@ import { FaTools } from "react-icons/fa";
 import { Button } from "@/components/ui/button"
 
 // Pages without their own booking form send visitors to the home page form.
-const PAGES_WITHOUT_FORM = ["/track", "/about"];
+const PAGES_WITHOUT_FORM = ["/track", "/about", "/refer"];
 
 const UserHeader = () => {
   const pathname = usePathname();

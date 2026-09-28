@@ -52,6 +52,7 @@ interface FormState {
   pin: string;
   unlock: boolean;
   isActive: boolean;
+  showOnWebsite: boolean;
   specializations: ApplianceCategoryValue[];
   serviceAreaIds: string[];
   storeId: string;
@@ -75,6 +76,7 @@ const toState = (t?: TechnicianDetail): FormState => ({
   pin: "",
   unlock: false,
   isActive: t?.isActive ?? true,
+  showOnWebsite: t?.showOnWebsite ?? false,
   specializations: t?.specializations ?? [],
   serviceAreaIds: t?.serviceAreaIds ?? [],
   storeId: t?.storeId ?? "",
@@ -161,6 +163,7 @@ export default function TechnicianForm({ technician }: { technician?: Technician
         serviceAreaIds: form.serviceAreaIds,
         ...(isOwner && form.storeId ? { storeId: form.storeId } : {}),
         isActive: form.isActive,
+        showOnWebsite: form.showOnWebsite,
         ...(technician ? { newPin: form.pin, unlock: form.unlock } : { pin: form.pin }),
       };
       const res = await fetch(technician ? `/api/admin/technicians/${technician.id}` : "/api/admin/technicians", {
@@ -425,6 +428,10 @@ export default function TechnicianForm({ technician }: { technician?: Technician
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" className="h-4 w-4" checked={form.isActive} onChange={(e) => set("isActive", e.target.checked)} />
             Active (can log in and be assigned jobs)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" className="h-4 w-4" checked={form.showOnWebsite} onChange={(e) => set("showOnWebsite", e.target.checked)} />
+            Show on the website (name, photo and rating appear publicly under &quot;Our Professionals&quot;)
           </label>
           {technician?.isLocked && (
             <label className="flex items-center gap-2 text-sm">

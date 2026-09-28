@@ -59,6 +59,8 @@ const TechnicianBase = z.object({
     idType: optionalText(40),
     idNumber: optionalText(40),
     isActive: z.boolean(),
+    // Off by default: the admin deliberately opts a technician into the public "Our Professionals" section.
+    showOnWebsite: z.boolean().default(false),
 });
 
 export const CreateTechnicianSchema = TechnicianBase.extend({ pin: PinSchema });

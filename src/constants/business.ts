@@ -9,4 +9,10 @@ export const BUSINESS = {
         postalCode: "262407",
         country: "IN",
     },
+    // Left empty until the owner has real links. The footer only shows an icon for a social that is set.
+    socials: {
+        instagram: "",
+        facebook: "",
+        youtube: "",
+    },
 } as const;

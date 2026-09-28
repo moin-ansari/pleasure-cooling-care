@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { CreateTechnicianSchema } from "@/schema/technician";
 import { createTechnician, getTechnician, listTechnicians } from "@/lib/domain/technicians";
 import { getAdminScope, unauthorizedResponse } from "@/helpers/requireAdmin";
 import { respond, serverError } from "@/helpers/respond";
 import { normalizeIndianMobile } from "@/lib/phone";
+import { STOREFRONT_TAG } from "@/lib/storefront";
 
 export async function GET(request: NextRequest) {
     try {
@@ -26,6 +28,7 @@ export async function POST(request: NextRequest) {
 
         const result = await createTechnician(scope, parsed.data);
         if (!result.ok) return respond(result, "");
+        if (parsed.data.showOnWebsite) revalidateTag(STOREFRONT_TAG);
         return NextResponse.json({ status: "success", message: "Technician created", data: await getTechnician(scope, result.data) });
     } catch (error) {
         return serverError("technician create failed", error);

@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
-import Services from "@/components/custom/services";
 import Footer from "@/components/custom/footer";
 import BookingForm from "@/components/custom/bookingForm";
 import Contact from "@/components/custom/contact";
 import HeroSection from "@/components/custom/hero";
+import StorefrontTopBar from "@/components/custom/StorefrontTopBar";
+import ServicesBrowser from "@/components/custom/ServicesBrowser";
+import CustomerExperience from "@/components/custom/CustomerExperience";
+import BrandsStrip from "@/components/custom/BrandsStrip";
+import OurProfessionals from "@/components/custom/OurProfessionals";
+import ReferAndEarn from "@/components/custom/ReferAndEarn";
 import CoverageLinks from "@/components/custom/seo/CoverageLinks";
 import JsonLd from "@/components/custom/seo/JsonLd";
-import ReviewsSection from "@/components/custom/seo/ReviewsSection";
-import { getStorefrontAreas, getStorefrontReviews, getStorefrontServices } from "@/lib/storefront";
+import { getStorefrontAreas, getStorefrontReviews, getStorefrontServices, getStorefrontStats, getStorefrontTechnicians } from "@/lib/storefront";
 import { localBusinessJsonLd } from "@/lib/seo";
 
 // Admin edits refresh the page immediately via the "storefront" tag; this is the fallback.
@@ -24,15 +28,25 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 const Home = async () => {
-  const [services, areas, reviews] = await Promise.all([getStorefrontServices(), getStorefrontAreas(), getStorefrontReviews()]);
+  const [services, areas, reviews, stats, technicians] = await Promise.all([
+    getStorefrontServices(),
+    getStorefrontAreas(),
+    getStorefrontReviews(),
+    getStorefrontStats(),
+    getStorefrontTechnicians(),
+  ]);
 
   return (
     <div>
       <JsonLd data={localBusinessJsonLd(areas, reviews)} />
+      <StorefrontTopBar areas={areas} />
       <HeroSection districts={areas.map((a) => a.district)} />
-      <Services id="services" services={services} />
+      <ServicesBrowser services={services} />
+      <CustomerExperience reviews={reviews.reviews} summary={reviews.summary} completedJobs={stats.completedJobs} areaCount={areas.length} />
+      <BrandsStrip />
+      <OurProfessionals technicians={technicians} />
       <CoverageLinks areas={areas} services={services} />
-      <ReviewsSection reviews={reviews.reviews} summary={reviews.summary} />
+      <ReferAndEarn />
       <BookingForm services={services} areas={areas} />
       <Contact />
       <Footer />
