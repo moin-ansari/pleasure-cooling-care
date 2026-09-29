@@ -10,7 +10,9 @@ import type { ServiceItem } from "@/types/service";
 // 3 across, 2 rows — 4 real appliance categories plus 2 plain utility tiles (Track service, Free
 // consultation call). Light-blue tiles with a large centered photo and a bold blue label underneath,
 // a visible "What do you need help with?" heading and a "View all" clear-filter link. No service count
-// shown (photo + name is enough for a glance), and tighter padding keeps the tile short.
+// shown (photo + name is enough for a glance). Every tile is the same `aspect-[4/3]` box (height always
+// less than width, whatever the column width ends up being) with a fixed-height, 2-line-clamped label
+// area, so a longer name like "Washing Machine" never makes its tile taller than the others.
 export default function CategoryGrid({
   services,
   value,
@@ -40,28 +42,28 @@ export default function CategoryGrid({
               type="button"
               onClick={() => onChange(active ? "all" : c)}
               aria-pressed={active}
-              className={`flex flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center ${active ? "ring-2 ring-blue-600" : ""}`}
+              className={`flex aspect-[4/3] flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center ${active ? "ring-2 ring-blue-600" : ""}`}
             >
-              <div className="relative h-20 w-20 shrink-0 sm:h-24 sm:w-24">
+              <div className="relative w-full min-h-0 flex-1">
                 <CategoryImage category={c} />
               </div>
-              <p className="text-xs font-bold leading-tight text-blue-900 sm:text-sm">{CATEGORY_LABELS[c]}</p>
+              <p className="line-clamp-2 h-7 w-full shrink-0 text-xs font-bold leading-tight text-blue-900 sm:h-8 sm:text-sm">{CATEGORY_LABELS[c]}</p>
             </button>
           );
         })}
 
-        <Link href="/track" className="flex flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center sm:h-24 sm:w-24">
+        <Link href="/track" className="flex aspect-[4/3] flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
+          <div className="flex w-full min-h-0 flex-1 items-center justify-center">
             <ClipboardCheck className="h-9 w-9 text-blue-700" aria-hidden="true" />
           </div>
-          <p className="text-xs font-bold leading-tight text-blue-900 sm:text-sm">Track service</p>
+          <p className="line-clamp-2 h-7 w-full shrink-0 text-xs font-bold leading-tight text-blue-900 sm:h-8 sm:text-sm">Track service</p>
         </Link>
 
-        <a href={`tel:+91${BUSINESS.phone}`} className="flex flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center sm:h-24 sm:w-24">
+        <a href={`tel:+91${BUSINESS.phone}`} className="flex aspect-[4/3] flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
+          <div className="flex w-full min-h-0 flex-1 items-center justify-center">
             <PhoneCall className="h-9 w-9 text-blue-700" aria-hidden="true" />
           </div>
-          <p className="text-xs font-bold leading-tight text-blue-900 sm:text-sm">Free consultation call</p>
+          <p className="line-clamp-2 h-7 w-full shrink-0 text-xs font-bold leading-tight text-blue-900 sm:h-8 sm:text-sm">Free consultation call</p>
         </a>
       </div>
     </section>
