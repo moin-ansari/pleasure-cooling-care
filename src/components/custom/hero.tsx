@@ -27,8 +27,8 @@ const SLIDES: Slide[] = [
 const SLIDE_MS = 5000;
 
 // Full-bleed hero: a slowly-rotating carousel of the owner's own appliance photos at their real aspect
-// ratio (nothing cropped), a dark-to-transparent scrim on the left (where the photos already leave room)
-// so white text stays legible over any of them, and the location strip sitting on top of it all, unchanged.
+// ratio (nothing cropped), no scrim over the image — the photos already leave light, empty copy-space —
+// so text sits directly on the photo in blue, matching the brand rather than a white-on-dark overlay.
 const HeroSection = ({ areas = [] }: { areas?: ServiceAreaItem[] }) => {
   const [active, setActive] = useState(0);
 
@@ -47,22 +47,21 @@ const HeroSection = ({ areas = [] }: { areas?: ServiceAreaItem[] }) => {
           fill
           priority={i === 0}
           sizes="100vw"
-          className={`object-cover transition-opacity duration-700 ${i === active ? "opacity-100" : "opacity-0"}`}
+          className={`object-cover transition-opacity duration-[1500ms] ease-in-out ${i === active ? "opacity-100" : "opacity-0"}`}
         />
       ))}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-950/70 via-blue-950/35 to-transparent" aria-hidden="true" />
 
       <div className="absolute inset-0 flex flex-col justify-between px-2 py-1.5 sm:px-4 sm:py-3">
-        <StorefrontTopBar areas={areas} compact />
+        <StorefrontTopBar areas={areas} compact tone="dark" />
 
         <div>
           {SLIDES.map((slide, i) => (
             <div key={slide.category} className={i === active ? "block" : "hidden"}>
-              <h1 className="text-sm font-bold leading-tight text-white sm:text-2xl">{slide.headline}</h1>
-              <p className="text-[11px] leading-tight text-blue-50 sm:mt-1 sm:text-base">{slide.subtext}</p>
+              <h1 className="text-sm font-bold leading-tight text-blue-900 sm:text-2xl">{slide.headline}</h1>
+              <p className="text-[11px] leading-tight text-blue-800 sm:mt-1 sm:text-base">{slide.subtext}</p>
             </div>
           ))}
-          <Link href="#services" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-white underline-offset-4 hover:underline sm:mt-2 sm:text-sm">
+          <Link href="#services" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blue-900 underline-offset-4 hover:underline sm:mt-2 sm:text-sm">
             Book now <span aria-hidden="true">&rarr;</span>
           </Link>
 
@@ -75,7 +74,7 @@ const HeroSection = ({ areas = [] }: { areas?: ServiceAreaItem[] }) => {
                 aria-selected={i === active}
                 aria-label={`Show ${slide.category.toLowerCase().replace("_", " ")} slide`}
                 onClick={() => setActive(i)}
-                className={`h-1 rounded-full transition-all ${i === active ? "w-4 bg-white" : "w-1 bg-white/50"}`}
+                className={`h-1 rounded-full transition-all ${i === active ? "w-4 bg-blue-900" : "w-1 bg-blue-900/40"}`}
               />
             ))}
           </div>

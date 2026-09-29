@@ -11,11 +11,20 @@ function nextSlotToday(): string | null {
   return TIME_SLOTS.find((slot) => slotToMinutes(slot) >= cutoff) ?? null;
 }
 
-// Sits on the hero's gradient, white-on-transparent — a bold "when" line over a lighter "where" line
-// with a dropdown, the same two-line shape Urban Company's app uses at the very top of its home screen.
-// Same content and behaviour in both sizes; `compact` only tightens the spacing/type scale to fit the
-// aspect-locked hero image, which is shorter than the old fixed-height one.
-export default function StorefrontTopBar({ areas, compact = false }: { areas: ServiceAreaItem[]; compact?: boolean }) {
+// Sits on top of the hero image — a bold "when" line over a lighter "where" line with a dropdown, the
+// same two-line shape Urban Company's app uses at the very top of its home screen. Same content and
+// behaviour in every combination; `compact` tightens the spacing/type scale for the aspect-locked hero,
+// and `tone` switches between white-on-dark (a scrim/solid background behind it) and blue-on-light (sitting
+// directly on a light photo, no scrim).
+export default function StorefrontTopBar({
+  areas,
+  compact = false,
+  tone = "light",
+}: {
+  areas: ServiceAreaItem[];
+  compact?: boolean;
+  tone?: "light" | "dark";
+}) {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -25,15 +34,17 @@ export default function StorefrontTopBar({ areas, compact = false }: { areas: Se
   const locationLabel = districts.length === 0 ? "Coming soon" : districts.length <= 2 ? districts.join(" & ") : `${districts[0]} & ${districts.length - 1} more`;
   const slot = ready ? nextSlotToday() : null;
   const whenLabel = !ready ? "Same-day service" : slot ? `Next slot today: ${slot}` : "Book for tomorrow";
+  const whenColor = tone === "dark" ? "text-blue-900" : "text-white";
+  const whereColor = tone === "dark" ? "text-blue-800" : "text-blue-100";
 
   return (
     <div className={`relative ${compact ? "" : "px-3 pt-3 sm:px-6"}`}>
-      <p className={`font-bold text-white ${compact ? "text-[11px] sm:text-sm" : "text-sm"}`}>{whenLabel}</p>
+      <p className={`font-bold ${whenColor} ${compact ? "text-[11px] sm:text-sm" : "text-sm"}`}>{whenLabel}</p>
       <button
         type="button"
         onClick={() => setOpen(true)}
         disabled={districts.length === 0}
-        className={`mt-0.5 flex items-center gap-1 font-medium text-blue-100 disabled:opacity-70 ${compact ? "text-[10px] sm:text-xs" : "text-xs"}`}
+        className={`mt-0.5 flex items-center gap-1 font-medium ${whereColor} disabled:opacity-70 ${compact ? "text-[10px] sm:text-xs" : "text-xs"}`}
       >
         <MapPin className={compact ? "h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5 shrink-0"} aria-hidden="true" />
         {locationLabel}
