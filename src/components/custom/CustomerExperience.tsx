@@ -27,7 +27,7 @@ export default function CustomerExperience({
   areaCount: number;
 }) {
   return (
-    <section aria-labelledby="experience-heading" className="bg-slate-50 px-3 py-8 sm:px-6">
+    <section aria-labelledby="experience-heading" className="bg-slate-50 px-2 py-8 sm:px-4">
       <h2 id="experience-heading" className="mb-5 text-center text-2xl font-bold text-slate-900">
         Trusted by customers near you
       </h2>

@@ -3,7 +3,7 @@ import { SERVICED_BRANDS } from "@/constants/brands";
 
 export default function BrandsStrip() {
   return (
-    <section aria-labelledby="brands-heading" className="px-3 py-8 sm:px-6">
+    <section aria-labelledby="brands-heading" className="px-2 py-8 sm:px-4">
       <h2 id="brands-heading" className="mb-4 text-center text-2xl font-bold text-slate-900">
         We service all major brands
       </h2>

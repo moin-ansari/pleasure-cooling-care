@@ -19,7 +19,7 @@ export default function ServicesBrowser({ services }: { services: ServiceItem[] 
     <div>
       <CategoryGrid services={services} value={category} onChange={setCategory} />
 
-      <section id="services" aria-labelledby="services-heading" className="px-3 py-6 sm:px-6">
+      <section id="services" aria-labelledby="services-heading" className="px-2 py-6 sm:px-4">
         <h2 id="services-heading" className="mb-8 text-center text-3xl font-bold text-primary">
           {category !== "all" ? `${filtered.length} matching ${filtered.length === 1 ? "service" : "services"}` : "Services"}
         </h2>

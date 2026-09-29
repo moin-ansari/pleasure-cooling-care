@@ -13,7 +13,9 @@ function nextSlotToday(): string | null {
 
 // Sits on the hero's gradient, white-on-transparent — a bold "when" line over a lighter "where" line
 // with a dropdown, the same two-line shape Urban Company's app uses at the very top of its home screen.
-export default function StorefrontTopBar({ areas }: { areas: ServiceAreaItem[] }) {
+// Same content and behaviour in both sizes; `compact` only tightens the spacing/type scale to fit the
+// aspect-locked hero image, which is shorter than the old fixed-height one.
+export default function StorefrontTopBar({ areas, compact = false }: { areas: ServiceAreaItem[]; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const [ready, setReady] = useState(false);
 
@@ -25,16 +27,21 @@ export default function StorefrontTopBar({ areas }: { areas: ServiceAreaItem[] }
   const whenLabel = !ready ? "Same-day service" : slot ? `Next slot today: ${slot}` : "Book for tomorrow";
 
   return (
-    <div className="relative px-3 pt-3 sm:px-6">
-      <p className="text-sm font-bold text-white">{whenLabel}</p>
-      <button type="button" onClick={() => setOpen(true)} disabled={districts.length === 0} className="mt-0.5 flex items-center gap-1 text-xs font-medium text-blue-100 disabled:opacity-70">
-        <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+    <div className={`relative ${compact ? "" : "px-3 pt-3 sm:px-6"}`}>
+      <p className={`font-bold text-white ${compact ? "text-[11px] sm:text-sm" : "text-sm"}`}>{whenLabel}</p>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={districts.length === 0}
+        className={`mt-0.5 flex items-center gap-1 font-medium text-blue-100 disabled:opacity-70 ${compact ? "text-[10px] sm:text-xs" : "text-xs"}`}
+      >
+        <MapPin className={compact ? "h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5 shrink-0"} aria-hidden="true" />
         {locationLabel}
-        <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        <ChevronDown className={compact ? "h-3 w-3 shrink-0 sm:h-3.5 sm:w-3.5" : "h-3.5 w-3.5 shrink-0"} aria-hidden="true" />
       </button>
 
       {open && (
-        <div className="absolute left-3 right-3 top-full z-30 mt-2 rounded-xl border bg-white p-3 text-left shadow-lg sm:left-6 sm:right-6" role="dialog" aria-label="Where we serve">
+        <div className="absolute left-0 right-0 top-full z-30 mt-2 rounded-xl border bg-white p-3 text-left shadow-lg" role="dialog" aria-label="Where we serve">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm font-semibold text-slate-900">Where we serve</p>
             <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="rounded p-1 text-slate-500 hover:bg-slate-100">

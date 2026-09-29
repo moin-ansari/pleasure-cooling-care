@@ -4,13 +4,6 @@ import React, { useState } from "react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/components/custom/CartProvider";
 import { CATEGORY_LABELS } from "@/constants/appliances";
 import type { ServiceItem } from "@/types/service";
@@ -26,15 +19,14 @@ interface ServiceGroup {
   serviceIds: string[];
   price: number;
   image: string | null;
-  desc: string[];
   warrantyDays: number;
 }
 
-// Types of the same appliance sharing a service, price and description show as one card ("Split / Window").
+// Types of the same appliance sharing a service, price and warranty show as one card ("Split / Window").
 function groupServices(services: ServiceItem[]): ServiceGroup[] {
   const groups = new Map<string, ServiceGroup>();
   for (const s of services) {
-    const key = [s.applianceCategory, s.serviceType, s.price, s.image ?? "", s.desc.join("|"), s.warrantyDurationDays].join("::");
+    const key = [s.applianceCategory, s.serviceType, s.price, s.image ?? "", s.warrantyDurationDays].join("::");
     const existing = groups.get(key);
     if (existing) {
       existing.subTypes.push(s.applianceSubType);
@@ -48,7 +40,6 @@ function groupServices(services: ServiceItem[]): ServiceGroup[] {
         serviceIds: [s.id],
         price: s.price,
         image: s.image,
-        desc: s.desc,
         warrantyDays: s.warrantyDurationDays,
       });
     }
@@ -96,7 +87,7 @@ function AddToCartButton({ group }: { group: ServiceGroup }) {
             </option>
           ))}
         </select>
-        <Button variant="default" className="h-8 w-full" onClick={() => add(subIndex)}>
+        <Button variant="default" className="h-8 w-full text-xs" onClick={() => add(subIndex)}>
           Add to cart
         </Button>
       </div>
@@ -104,77 +95,42 @@ function AddToCartButton({ group }: { group: ServiceGroup }) {
   }
 
   return (
-    <Button variant="default" className="h-8 w-full" onClick={() => (multi ? setChoosing(true) : add(0))}>
+    <Button variant="default" className="h-8 w-full text-xs" onClick={() => (multi ? setChoosing(true) : add(0))}>
       Add to cart
     </Button>
   );
 }
 
+// Photo-forward, 2-across cards: image fills the top, then title/subtype, price and guarantee, with the
+// Add-to-cart control pinned to the bottom so every card in a row lines up.
 const ServiceCard = ({ services }: { services: ServiceItem[] }) => {
   const groups = groupServices(services);
   const showCategory = new Set(groups.map((g) => g.category)).size > 1;
 
   if (groups.length === 0) {
-    return (
-      <div className="w-full h-40 flex justify-center items-center text-muted-foreground">
-        Services will be listed here soon.
-      </div>
-    );
+    return <div className="flex h-40 w-full items-center justify-center text-muted-foreground">Services will be listed here soon.</div>;
   }
 
   return (
-    <div className="w-full">
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 justify-center items-center p-0 w-full md:w-1/2 md:m-auto">
-        {groups.map((element) => (
-          <Card
-            key={element.key}
-            className="flex sm:col-span-2 md:col-span-1 lg:col-span-1 md:h-full"
-          >
-            <CardContent className="w-full p-3">
-              <div className="flex justify-between w-full">
-                <CardHeader className="p-0 pr-3 w-3/5">
-                  {showCategory && (
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                      {CATEGORY_LABELS[element.category]}
-                    </span>
-                  )}
-                  <CardTitle className="text-sm tracking-normal">
-                    <span>{element.serviceType} </span>
-                    <span className="text-xs">({element.subTypes.join(" / ")})</span>
-                  </CardTitle>
-                  <div className="leading-relaxed">
-                    <div className="pb-3">
-                      <span className="font-semibold text-sm tracking-normal">Price : </span>
-                      <span className="text-sm text-green-500 font-semibold tracking-normal">₹ {element.price}</span>
-                    </div>
-                    {element.warrantyDays > 0 && (
-                      <p className="text-xs text-muted-foreground pb-2">{element.warrantyDays}-day guarantee</p>
-                    )}
-                    <Separator />
-                    <ul className="list-disc p-3 pr-0 text-[10px] italic">
-                      {element.desc.map((el, index) => (
-                        <li key={index}>{el}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardHeader>
-                <div className="w-2/5 rounded overflow-hidden flex flex-col h-full">
-                  <Image
-                    width={100}
-                    height={100}
-                    className="w-full rounded"
-                    src={element.image || FALLBACK_IMAGE}
-                    alt={`${element.serviceType} service`}
-                  />
-                  <div className="py-3">
-                    <AddToCartButton group={element} />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3">
+      {groups.map((element) => (
+        <div key={element.key} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
+          <div className="relative aspect-[4/3] w-full bg-slate-100">
+            <Image src={element.image || FALLBACK_IMAGE} alt="" fill sizes="(max-width: 640px) 50vw, 300px" className="object-cover" />
+          </div>
+          <div className="flex flex-1 flex-col gap-1 p-2.5">
+            {showCategory && <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{CATEGORY_LABELS[element.category]}</span>}
+            <p className="text-sm font-semibold leading-tight text-slate-900">
+              {element.serviceType} <span className="font-normal text-muted-foreground">({element.subTypes.join(" / ")})</span>
+            </p>
+            <p className="text-sm font-bold text-slate-900">₹{element.price}</p>
+            {element.warrantyDays > 0 && <p className="text-xs text-emerald-600">{element.warrantyDays}-day guarantee</p>}
+            <div className="mt-auto pt-2">
+              <AddToCartButton group={element} />
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

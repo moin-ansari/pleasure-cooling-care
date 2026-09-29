@@ -19,7 +19,7 @@ export default function OurProfessionals({ technicians }: { technicians: PublicT
   if (technicians.length === 0) return null;
 
   return (
-    <section aria-labelledby="professionals-heading" className="px-3 py-8 sm:px-6">
+    <section aria-labelledby="professionals-heading" className="px-2 py-8 sm:px-4">
       <h2 id="professionals-heading" className="mb-1 text-center text-2xl font-bold text-slate-900">
         Meet our professionals
       </h2>
