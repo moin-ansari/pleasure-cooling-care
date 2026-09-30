@@ -37,7 +37,7 @@ const Home = async () => {
     <div>
       <JsonLd data={localBusinessJsonLd(areas, reviews)} />
       <HeroSection areas={areas} />
-      <ServicesBrowser services={services} />
+      <ServicesBrowser services={services} reviewCount={reviews.summary.count} />
       <CustomerExperience reviews={reviews.reviews} summary={reviews.summary} completedJobs={stats.completedJobs} areaCount={areas.length} />
       <BrandsStrip />
       <OurProfessionals technicians={technicians} />

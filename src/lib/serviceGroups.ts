@@ -50,3 +50,9 @@ export function groupPriceLabel(prices: number[]): string {
   const min = Math.min(...prices);
   return prices.every((p) => p === min) ? `₹${min}` : `From ₹${min}`;
 }
+
+// A struck-through "before" price next to the real one — a flat 20% markup on the lowest price in the
+// group, computed rather than stored, so it never needs its own data entry.
+export function strikeoutPrice(prices: number[]): number {
+  return Math.round(Math.min(...prices) * 1.2);
+}

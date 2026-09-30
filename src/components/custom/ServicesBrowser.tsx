@@ -7,7 +7,7 @@ import type { ServiceItem } from "@/types/service";
 
 // Category grid + the services list, sharing one filter so tapping a category narrows the grid below.
 // Search is hidden for now (easy to bring back — this only removed the input, the data flow is unchanged).
-export default function ServicesBrowser({ services }: { services: ServiceItem[] }) {
+export default function ServicesBrowser({ services, reviewCount }: { services: ServiceItem[]; reviewCount: number }) {
   const [category, setCategory] = useState<CategoryFilter>("all");
 
   const filtered = useMemo(() => {
@@ -32,7 +32,7 @@ export default function ServicesBrowser({ services }: { services: ServiceItem[] 
             .
           </p>
         ) : (
-          <ServiceCard services={filtered} />
+          <ServiceCard services={filtered} reviewCount={reviewCount} />
         )}
       </section>
     </div>

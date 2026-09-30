@@ -61,7 +61,8 @@ export default async function CategoryPage({ params }: Props) {
   const content = CATEGORY_CONTENT[category];
   const slug = districtSlug(area.district);
   const faqs = buildFaqs(area.district, areas.map((a) => a.district), category);
-  const categoryReviews = (await getStorefrontReviews()).reviews.filter((r) => r.applianceCategory === category);
+  const reviewsData = await getStorefrontReviews();
+  const categoryReviews = reviewsData.reviews.filter((r) => r.applianceCategory === category);
 
   return (
     <div>
@@ -92,7 +93,7 @@ export default async function CategoryPage({ params }: Props) {
           <h2 id="services-heading" className="text-2xl font-bold text-primary text-center mb-6">
             {CATEGORY_LABELS[category]} services and prices
           </h2>
-          <ServiceCard services={categoryServices} />
+          <ServiceCard services={categoryServices} reviewCount={reviewsData.summary.count} />
         </section>
 
         <section aria-labelledby="problems-heading" className="px-3 py-8 sm:w-1/2 sm:m-auto">
