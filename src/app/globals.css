@@ -74,3 +74,45 @@
       @apply bg-background text-foreground;
     }
   }
+
+  .snowfall-layer {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .snowflake {
+    position: absolute;
+    top: -8%;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 0 6px rgba(255, 255, 255, 0.6);
+    /* two independent animations: `top` moves it top-to-bottom of the
+       container (percentages on `top` resolve against the container's
+       height); `transform: translateX` handles the side-to-side sway in
+       fixed pixels. Percentages inside `transform` resolve against the
+       flake's OWN size, not the container, so the fall must not live there. */
+    animation-name: snowfall-fall, snowfall-sway;
+    animation-duration: var(--fall-duration, 12s), var(--sway-duration, 3s);
+    animation-delay: var(--fall-delay, 0s), 0s;
+    animation-timing-function: linear, ease-in-out;
+    animation-iteration-count: infinite, infinite;
+    animation-direction: normal, alternate;
+  }
+
+  @keyframes snowfall-fall {
+    0%   { top: -8%; }
+    100% { top: 115%; }
+  }
+
+  @keyframes snowfall-sway {
+    0%   { transform: translateX(-10px); }
+    100% { transform: translateX(10px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .snowflake {
+      animation: none;
+    }
+  }

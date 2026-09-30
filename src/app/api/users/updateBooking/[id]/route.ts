@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connect } from '@/db/db';
 import BookRequest from "@/models/bookRequest.model"
+import { requireAdmin } from "@/helpers/requireAdmin";
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string }}) {
     try {
 
-        connect();    
-        const searchParams = request.nextUrl.searchParams
-        let param:string | null = ""
-        param = searchParams.get('params')
-        const [action, otp]:any = param?.split(',');
+        const unauthorized = await requireAdmin(request);
+        if (unauthorized) return unauthorized;
 
-        if(otp !== "011110"){
-            return NextResponse.json({ status: 'error', message: "Invalid OTP!"})
-        }
+        connect();
+        const action = request.nextUrl.searchParams.get('params')?.split(',')[0];
 
         if (action === 'cancel' || action === 'complete') {
             const updateData = { status: action === 'cancel' ? 'cancelled' : 'completed' };
@@ -27,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
         }
 
         return NextResponse.json({ status: 'error', message: "error while updatation"})
-        
+
     } catch (error: any) {
         return NextResponse.json({ status: 'error', message: error.message})
     }

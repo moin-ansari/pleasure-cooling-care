@@ -37,12 +37,17 @@ const Login = () => {
 
   const onSubmit = async (values: z.infer<typeof LoginSchema>) => {
     setBtnLoading(true);
-    let res = await axios.post("api/users/login", values)
-    if(res.data.status == "success"){
-      router.push("/admin")
-    }else if(res.data.status == "failed"){
+    try {
+      let res = await axios.post("api/users/login", values)
+      if(res.data.status == "success"){
+        router.push("/admin")
+      }else if(res.data.status == "failed"){
+        setBtnLoading(false)
+        toast.error(res.data.message)
+      }
+    } catch (error: any) {
       setBtnLoading(false)
-      toast.error(res.data.message)
+      toast.error(error?.response?.data?.message || "Something went wrong. Please try again.")
     }
   };
 

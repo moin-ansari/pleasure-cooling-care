@@ -7,10 +7,38 @@ import { LuSprayCan } from "react-icons/lu";
 import { MdOutlineGasMeter } from "react-icons/md";
 import { GiComputerFan } from "react-icons/gi";4
 
+const SNOWFLAKE_COUNT = 55;
+const snowflakes = Array.from({ length: SNOWFLAKE_COUNT }, (_, i) => {
+  const left = (i * 137.5) % 100; // golden-angle spread = even, non-repeating coverage
+  const size = 4 + ((i * 7) % 9); // 4-12px
+  const duration = 7 + ((i * 5) % 9); // 7-15s, falling
+  const delay = -((i * 1.7) % duration); // negative delay staggers flakes mid-fall on load
+  const swayDuration = 2.5 + ((i * 3) % 3); // 2.5-5.5s, side-to-side
+  const opacity = 0.55 + (((i * 11) % 45) / 100); // 0.55-1
+  return { left, size, duration, delay, swayDuration, opacity };
+});
+
 const HeroSection = () => {
   return (
-    <div className='bg-blue-800'>
-      <div className="py-5 px-3 text-center md:w-1/2 md:m-auto">
+    <div className="relative overflow-hidden bg-gradient-to-b from-sky-400 via-sky-600 to-blue-800">
+      <div className="snowfall-layer" aria-hidden="true">
+        {snowflakes.map((flake, i) => (
+          <span
+            key={i}
+            className="snowflake"
+            style={{
+              left: `${flake.left}%`,
+              width: `${flake.size}px`,
+              height: `${flake.size}px`,
+              opacity: flake.opacity,
+              "--fall-duration": `${flake.duration}s`,
+              "--fall-delay": `${flake.delay}s`,
+              "--sway-duration": `${flake.swayDuration}s`,
+            } as React.CSSProperties}
+          />
+        ))}
+      </div>
+      <div className="relative z-10 py-5 px-3 text-center md:w-1/2 md:m-auto">
         <h1 className="text-4xl text-white font-bold mt-8 mb-8">Do you need a AC Service ?</h1>
         <div className="text-1xl text-white font-medium"><span className="text-2xl">&#x275D;</span> We have 5 years of proven expertise in Air Conditioner solutions. Trust us for top-tier service that keeps you cool <span className="text-2xl">&#x275E;</span></div>
         <Button variant={"link"} className="w-1/2 text-white mb-6" asChild>

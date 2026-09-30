@@ -21,14 +21,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { REGEXP_ONLY_DIGITS_AND_CHARS } from "input-otp";
-
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-
 import { Separator } from "@/components/ui/separator";
 import { MdOutlineCancel } from "react-icons/md";
 import { FaRegCheckCircle } from "react-icons/fa";
@@ -62,7 +54,6 @@ export default function Page({ params }: { params: { id: string } }) {
   const [data, setData] = useState<IBooking>();
   const [open, setOpen] = useState(false);
   const [operation, setOperation] = useState<string>("");
-  const [value, setValue] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -96,7 +87,7 @@ export default function Page({ params }: { params: { id: string } }) {
   const handleAction = async (type: string) => {
     try {
       const response = await fetch(
-        `/api/users/updateBooking/${params.id}?params=${type},${value}`,
+        `/api/users/updateBooking/${params.id}?params=${type}`,
         {
           method: "PUT",
         }
@@ -108,12 +99,10 @@ export default function Page({ params }: { params: { id: string } }) {
       } else {
         setData(jsonData.data);
         setOpen(false);
-        setValue("");
       }
     } catch (error: any) {
       toast.error("Error update data:", error);
       setOpen(false);
-      setValue("");
     }
   };
 
@@ -229,29 +218,6 @@ export default function Page({ params }: { params: { id: string } }) {
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <InputOTP
-                    maxLength={6}
-                    value={value}
-                    onChange={(value) => setValue(value)}
-                    className="m-auto"
-                    pattern={REGEXP_ONLY_DIGITS_AND_CHARS}
-                  >
-                    <InputOTPGroup>
-                      <InputOTPSlot index={0} />
-                      <InputOTPSlot index={1} />
-                      <InputOTPSlot index={2} />
-                      <InputOTPSlot index={3} />
-                      <InputOTPSlot index={4} />
-                      <InputOTPSlot index={5} />
-                    </InputOTPGroup>
-                  </InputOTP>
-                  <div className="text-center text-sm">
-                    {value === "" ? (
-                      <>Enter your one-time password.</>
-                    ) : (
-                      <>You entered: {value}</>
-                    )}
-                  </div>
                   <AlertDialogDescription>
                     By Confirming your request will be {operation}
                   </AlertDialogDescription>

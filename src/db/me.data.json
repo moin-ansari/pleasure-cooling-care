@@ -5,10 +5,11 @@
     "experience": [
         {
             "logo": "/logo",
-            "company": "Urbun Company",
-            "years": "3",
+            "company": "Urban Company",
+            "years": "6",
+            "period": "2020 - 2026",
             "work": {
-                "description": "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
+                "description": "2020 - 2026 worked with Urban Company. Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
                 "complaints": "150",
                 "ratings": [
                     1,
@@ -24,8 +25,9 @@
             "logo": "/logo",
             "company": "Voltas Service Center",
             "years": "2",
+            "period": "2018 - 2020",
             "work": {
-                "description": "Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
+                "description": "2018 - 2020 worked with Voltas Service Center. Install and repair air conditioning systems, Perform routine maintenance on AC equipment.",
                 "complaints": "100",
                 "ratings": [
                     1,
