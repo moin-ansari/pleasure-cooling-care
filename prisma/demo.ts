@@ -63,21 +63,32 @@ async function main() {
     await db.booking.deleteMany();
 
     // ---- sample services for every appliance (AC ones come from the normal seed) ----
-    const extra: [string, string, string, number, number][] = [
-        ["REFRIGERATOR", "Double Door", "Refrigerator Repair", 349, 15],
-        ["REFRIGERATOR", "Single Door", "Refrigerator Install", 499, 30],
-        ["WASHING_MACHINE", "Top Load", "Washing Machine Repair", 349, 15],
-        ["WASHING_MACHINE", "Front Load", "Washing Machine Deep Clean", 899, 0],
-        ["GEYSER", "Electric", "Geyser Repair", 299, 15],
-        ["GEYSER", "Storage", "Geyser Install", 449, 30],
+    // Refrigerator Install and Geyser Install are retired — not in this list, so a fresh seed never
+    // recreates them (the now-stale rows from an older seed are deactivated separately, below).
+    const extra: { category: string; subType: string; serviceType: string; price: number; warrantyDays: number; image: string }[] = [
+        { category: "REFRIGERATOR", subType: "Double Door", serviceType: "Refrigerator Repair", price: 349, warrantyDays: 15, image: "/images/appliances/refrigerator-repair.png" },
+        { category: "WASHING_MACHINE", subType: "Top Load", serviceType: "Washing Machine Repair", price: 349, warrantyDays: 15, image: "/images/appliances/washing-machine-repair.png" },
+        { category: "WASHING_MACHINE", subType: "Front Load", serviceType: "Washing Machine Deep Clean", price: 899, warrantyDays: 0, image: "/images/appliances/washing-machine-clean.png" },
+        { category: "GEYSER", subType: "Electric", serviceType: "Geyser Repair", price: 299, warrantyDays: 15, image: "/images/appliances/geyser-repair.jpg" },
     ];
-    for (const [applianceCategory, applianceSubType, serviceType, price, warrantyDurationDays] of extra) {
+    for (const item of extra) {
         await db.service.upsert({
-            where: { applianceCategory_applianceSubType_serviceType: { applianceCategory: applianceCategory as never, applianceSubType, serviceType } },
+            where: {
+                applianceCategory_applianceSubType_serviceType: { applianceCategory: item.category as never, applianceSubType: item.subType, serviceType: item.serviceType },
+            },
             update: {},
-            create: { applianceCategory: applianceCategory as never, applianceSubType, serviceType, price, desc: ["Sample service for testing"], warrantyDurationDays },
+            create: {
+                applianceCategory: item.category as never,
+                applianceSubType: item.subType,
+                serviceType: item.serviceType,
+                price: item.price,
+                image: item.image,
+                desc: ["Sample service for testing"],
+                warrantyDurationDays: item.warrantyDays,
+            },
         });
     }
+    await db.service.updateMany({ where: { serviceType: { in: ["Refrigerator Install", "Geyser Install"] } }, data: { isActive: false } });
     const svc = async (category: string, serviceType: string) => db.service.findFirstOrThrow({ where: { applianceCategory: category as never, serviceType }, orderBy: { price: "asc" } });
 
     // ---- technicians ----
