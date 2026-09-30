@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check, Droplets, Plug, ShieldCheck, Star, Wrench } from "lucide-react";
 import ServiceDetailAddToCart from "@/components/custom/ServiceDetailAddToCart";
+import { AddToCartButton } from "@/components/custom/serviceCard";
 import BrandsStrip from "@/components/custom/BrandsStrip";
 import OurProfessionals from "@/components/custom/OurProfessionals";
 import ReviewsSection from "@/components/custom/seo/ReviewsSection";
@@ -111,10 +112,17 @@ export default async function ServiceDetailsPage({ params }: Props) {
             </div>
           )}
 
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold text-slate-900">{groupPriceLabel(group.prices)}</span>
-            <span className="text-base font-normal text-muted-foreground line-through">₹{strikeoutPrice(group.prices)}</span>
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">{discountPercent(group.prices)}% off</span>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-slate-900">{groupPriceLabel(group.prices)}</span>
+              <span className="text-base font-normal text-muted-foreground line-through">₹{strikeoutPrice(group.prices)}</span>
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">{discountPercent(group.prices)}% off</span>
+            </div>
+            {group.subTypes.length === 1 && (
+              <div className="w-20">
+                <AddToCartButton group={group} />
+              </div>
+            )}
           </div>
           {pricesVary && (
             <ul className="mt-1 text-sm text-muted-foreground">
