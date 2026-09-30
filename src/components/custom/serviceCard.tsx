@@ -30,31 +30,31 @@ function addedToast() {
   );
 }
 
-// A single "Add" button when the group is one specific service, or one small button per subtype
-// ("Split" / "Window") when it isn't — tapping a subtype adds that exact service directly, no
-// intermediate picker step, since the whole control has to fit a narrow column beside the card's text.
+// A single "Add" button when the group is exactly one service — it adds directly, no picker needed.
+// When the group has more than one subtype (so which one to add is a real choice, e.g. AC Uninstall:
+// Split vs Window are priced differently), "Add" instead opens the Details page, which has the full
+// variant picker — a compact card has no honest way to offer "Split" or "Window" as if they were two
+// separate one-tap products.
 export function AddToCartButton({ group }: { group: ServiceGroup }) {
   const { addToCart } = useCart();
 
-  const add = (index: number) => {
-    addToCart(group.serviceIds[index]);
-    addedToast();
-  };
-
   if (group.subTypes.length > 1) {
     return (
-      <div className="grid gap-1">
-        {group.subTypes.map((t, i) => (
-          <Button key={t} variant="default" className="h-7 w-full px-1 text-[9px] leading-none sm:h-8 sm:text-[11px]" onClick={() => add(i)}>
-            {t}
-          </Button>
-        ))}
-      </div>
+      <Button asChild variant="default" className="h-7 w-full px-1 text-[10px] sm:h-8 sm:text-xs">
+        <Link href={`/services/${group.serviceIds[0]}`}>Add</Link>
+      </Button>
     );
   }
 
   return (
-    <Button variant="default" className="h-7 w-full px-1 text-[10px] sm:h-8 sm:text-xs" onClick={() => add(0)}>
+    <Button
+      variant="default"
+      className="h-7 w-full px-1 text-[10px] sm:h-8 sm:text-xs"
+      onClick={() => {
+        addToCart(group.serviceIds[0]);
+        addedToast();
+      }}
+    >
       Add
     </Button>
   );
