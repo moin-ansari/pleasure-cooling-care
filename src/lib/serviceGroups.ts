@@ -56,3 +56,9 @@ export function groupPriceLabel(prices: number[]): string {
 export function strikeoutPrice(prices: number[]): number {
   return Math.round(Math.min(...prices) * 1.2);
 }
+
+// The "X% off" a strikeoutPrice implies, e.g. a flat 20% markup reads back as ~17% off.
+export function discountPercent(prices: number[]): number {
+  const real = Math.min(...prices);
+  return Math.round((1 - real / strikeoutPrice(prices)) * 100);
+}

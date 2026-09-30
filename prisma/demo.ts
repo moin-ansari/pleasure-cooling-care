@@ -65,11 +65,43 @@ async function main() {
     // ---- sample services for every appliance (AC ones come from the normal seed) ----
     // Refrigerator Install and Geyser Install are retired — not in this list, so a fresh seed never
     // recreates them (the now-stale rows from an older seed are deactivated separately, below).
-    const extra: { category: string; subType: string; serviceType: string; price: number; warrantyDays: number; image: string }[] = [
-        { category: "REFRIGERATOR", subType: "Double Door", serviceType: "Refrigerator Repair", price: 349, warrantyDays: 15, image: "/images/appliances/refrigerator-repair.png" },
-        { category: "WASHING_MACHINE", subType: "Top Load", serviceType: "Washing Machine Repair", price: 349, warrantyDays: 15, image: "/images/appliances/washing-machine-repair.png" },
-        { category: "WASHING_MACHINE", subType: "Front Load", serviceType: "Washing Machine Deep Clean", price: 899, warrantyDays: 0, image: "/images/appliances/washing-machine-clean.png" },
-        { category: "GEYSER", subType: "Electric", serviceType: "Geyser Repair", price: 299, warrantyDays: 15, image: "/images/appliances/geyser-repair.jpg" },
+    const extra: { category: string; subType: string; serviceType: string; price: number; warrantyDays: number; image: string; desc: string[] }[] = [
+        {
+            category: "REFRIGERATOR",
+            subType: "Double Door",
+            serviceType: "Refrigerator Repair",
+            price: 349,
+            warrantyDays: 15,
+            image: "/images/appliances/refrigerator-repair.png",
+            desc: ["Diagnosis of cooling, compressor and electrical faults", "Spare parts cost confirmed before any repair"],
+        },
+        {
+            category: "WASHING_MACHINE",
+            subType: "Top Load",
+            serviceType: "Washing Machine Repair",
+            price: 349,
+            warrantyDays: 15,
+            image: "/images/appliances/washing-machine-repair.png",
+            desc: ["Diagnosis of motor, drum and electrical faults", "Spare parts cost confirmed before any repair"],
+        },
+        {
+            category: "WASHING_MACHINE",
+            subType: "Front Load",
+            serviceType: "Washing Machine Deep Clean",
+            price: 899,
+            warrantyDays: 0,
+            image: "/images/appliances/washing-machine-clean.png",
+            desc: ["Drum and tub deep clean to remove odour and residue", "Exterior wipe-down included"],
+        },
+        {
+            category: "GEYSER",
+            subType: "Electric",
+            serviceType: "Geyser Repair",
+            price: 299,
+            warrantyDays: 15,
+            image: "/images/appliances/geyser-repair.jpg",
+            desc: ["Diagnosis of heating element, thermostat and wiring faults", "Spare parts cost confirmed before any repair"],
+        },
     ];
     for (const item of extra) {
         await db.service.upsert({
@@ -83,7 +115,7 @@ async function main() {
                 serviceType: item.serviceType,
                 price: item.price,
                 image: item.image,
-                desc: ["Sample service for testing"],
+                desc: item.desc,
                 warrantyDurationDays: item.warrantyDays,
             },
         });
