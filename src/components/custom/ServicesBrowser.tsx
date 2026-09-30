@@ -19,8 +19,8 @@ export default function ServicesBrowser({ services, reviewCount }: { services: S
     <div>
       <CategoryGrid services={services} value={category} onChange={setCategory} />
 
-      <section id="services" aria-labelledby="services-heading" className="px-2 py-6 sm:px-4">
-        <h2 id="services-heading" className="mb-8 text-center text-3xl font-bold text-primary">
+      <section id="services" aria-labelledby="services-heading" className="px-2 py-3 sm:px-4">
+        <h2 id="services-heading" className="mb-3 text-lg font-bold text-primary sm:text-xl">
           {category !== "all" ? `${filtered.length} matching ${filtered.length === 1 ? "service" : "services"}` : "Services"}
         </h2>
         {filtered.length === 0 ? (
