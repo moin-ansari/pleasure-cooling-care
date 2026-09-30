@@ -76,6 +76,15 @@ async function main() {
             desc: ["Diagnosis of cooling, compressor and electrical faults", "Spare parts cost confirmed before any repair"],
         },
         {
+            category: "REFRIGERATOR",
+            subType: "Single Door",
+            serviceType: "Refrigerator Repair",
+            price: 299,
+            warrantyDays: 15,
+            image: "/images/appliances/refrigerator-repair.png",
+            desc: ["Diagnosis of cooling, compressor and electrical faults", "Spare parts cost confirmed before any repair"],
+        },
+        {
             category: "WASHING_MACHINE",
             subType: "Top Load",
             serviceType: "Washing Machine Repair",

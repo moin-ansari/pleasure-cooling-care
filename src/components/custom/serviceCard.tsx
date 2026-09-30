@@ -93,7 +93,10 @@ const ServiceCard = ({ services, reviewCount }: { services: ServiceItem[]; revie
     <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3">
       {groups.map((element) => {
         const minPrice = Math.min(...element.prices);
-        const pricesVary = element.prices.some((p) => p !== minPrice);
+        // "starts from" whenever the card covers more than one appliance subtype (Split/Window, Double
+        // Door/Single Door, ...) — shown even if those subtypes happen to be priced the same, since the
+        // price could vary by type and the phrasing should stay consistent across every multi-type card.
+        const multi = element.subTypes.length > 1;
         return (
           <div key={element.key} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
             <div className="relative aspect-[4/3] w-full bg-slate-100">
@@ -110,7 +113,7 @@ const ServiceCard = ({ services, reviewCount }: { services: ServiceItem[]; revie
 
               <div className="mt-0.5 flex items-center justify-between gap-2">
                 <div>
-                  <p className={`text-[9px] leading-tight text-slate-400 sm:text-[10px] ${pricesVary ? "" : "invisible"}`}>starts from</p>
+                  <p className={`text-[9px] leading-tight text-slate-400 sm:text-[10px] ${multi ? "" : "invisible"}`}>starts from</p>
                   <div className="flex items-baseline gap-1.5">
                     <span className="whitespace-nowrap text-sm font-bold text-slate-900 sm:text-base">₹{minPrice}</span>
                     <span className="whitespace-nowrap text-[10px] font-normal text-muted-foreground line-through sm:text-xs">₹{strikeoutPrice(element.prices)}</span>
