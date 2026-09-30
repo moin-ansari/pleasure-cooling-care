@@ -1,6 +1,6 @@
 [
     {
-        "image": "/service_half2.jpeg",
+        "image": "/images/appliances/ac-repair.png",
         "acType": "Split / Window",
         "serviceType": "AC Repair",
         "price": "299",
@@ -10,7 +10,7 @@
         ]
     },
     {
-        "image": "/service_half1.jpeg",
+        "image": "/images/appliances/ac-gas-refill.png",
         "acType": "",
         "serviceType": "Gas leak fix & refill",
         "price": "2449",
@@ -19,7 +19,7 @@
         ]
     },
     {
-        "image": "/service_half3.jpeg",
+        "image": "/images/appliances/ac-deep-clean.png",
         "acType": "Split / Window",
         "serviceType": "Anti-rust deep clean AC service",
         "price": "649",
@@ -28,16 +28,7 @@
         ]
     },
     {
-        "image": "/service_half2.jpeg",
-        "acType": "Split / Window",
-        "serviceType": "AC Service Lite",
-        "price": "399",
-        "desc": [
-            "Basic cleaning with water jet technology"
-        ]
-    },
-    {
-        "image": "/service_half1.jpeg",
+        "image": "/images/appliances/ac-split-install.png",
         "acType": "Split",
         "serviceType": "AC Install",
         "price": "1399",
@@ -48,17 +39,17 @@
         ]
     },
     {
-        "image": "/service_half3.jpeg",
+        "image": "/images/appliances/ac-uninstall.png",
         "acType": "Split",
         "serviceType": "AC Uninstall",
         "price": "649",
         "desc": [
-            "Uninstallation of indoor & outdoor units",
-            "AC packing, Cleanup of service area"
+            "Uninstallation of the AC unit(s) — indoor & outdoor for split, single unit for window",
+            "AC packing, cleanup of service area"
         ]
     },
     {
-        "image": "/service_half1.jpeg",
+        "image": "/images/appliances/ac-window-install.png",
         "acType": "Window",
         "serviceType": "AC Install",
         "price": "699",
@@ -69,13 +60,13 @@
         ]
     },
     {
-        "image": "/service_half1.jpeg",
+        "image": "/images/appliances/ac-uninstall.png",
         "acType": "Window",
         "serviceType": "AC Uninstall",
         "price": "399",
         "desc": [
-            "Uninstallation of unit",
-            "AC packing, Cleanup of service area"
+            "Uninstallation of the AC unit(s) — indoor & outdoor for split, single unit for window",
+            "AC packing, cleanup of service area"
         ]
     }
 ]
