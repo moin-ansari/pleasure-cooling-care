@@ -61,7 +61,7 @@ export function CategoryImage({ category, className = "" }: { category: Applianc
       alt=""
       fill
       sizes="(max-width: 640px) 25vw, 200px"
-      className={`object-contain p-2 ${className}`}
+      className={`object-contain ${className}`}
       onError={() => setFailed(true)}
     />
   );
