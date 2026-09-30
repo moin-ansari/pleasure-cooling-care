@@ -16,6 +16,22 @@ const FALLBACK_IMAGE = "/service_half1.jpeg";
 // the real, live count of published reviews and will keep growing).
 const RATING = 4.5;
 
+// Short, one-line feature tags for the compact card — deliberately separate from the service's own
+// `desc` (which stays full-length for the Details page). Kept short enough here to never wrap or need
+// truncating at the card's width; a serviceType with no entry just skips the feature list rather than
+// falling back to the long text and re-introducing the wrapping problem.
+const SHORT_FEATURES: Record<string, string[]> = {
+  "AC Repair": ["Quick diagnosis", "Same-day fix", "Upfront pricing"],
+  "AC Install": ["Wall drilling", "Leak-proof piping", "Cooling check"],
+  "AC Uninstall": ["Safe removal", "Careful packing", "Area cleanup"],
+  "Anti-rust deep clean AC service": ["Anti-rust spray", "Deep filter clean", "Better cooling"],
+  "Gas leak fix & refill": ["Leak detection", "Gas refill included", "Long-lasting fix"],
+  "Refrigerator Repair": ["Cooling diagnosis", "Compressor check", "Upfront pricing"],
+  "Washing Machine Repair": ["Motor & drum check", "Electrical check", "Upfront pricing"],
+  "Washing Machine Deep Clean": ["Drum deep clean", "Odour removal", "Exterior wipe-down"],
+  "Geyser Repair": ["Element diagnosis", "Thermostat check", "Upfront pricing"],
+};
+
 function addedToast() {
   toast.success(
     (t) => (
@@ -108,11 +124,11 @@ const ServiceCard = ({ services, reviewCount }: { services: ServiceItem[]; revie
 
             {element.warrantyDays > 0 && <p className="mt-0.5 text-[10px] font-medium text-emerald-600 sm:text-xs">{element.warrantyDays}-day guarantee</p>}
 
-            {element.desc.length > 0 && (
+            {SHORT_FEATURES[element.serviceType] && (
               <ul className="mt-1 grid gap-0.5">
-                {element.desc.slice(0, 2).map((line) => (
-                  <li key={line} className="flex items-start gap-1 text-[10px] font-normal leading-snug text-slate-600 sm:text-xs">
-                    <Check className="mt-0.5 h-2.5 w-2.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                {SHORT_FEATURES[element.serviceType].map((line) => (
+                  <li key={line} className="flex items-center gap-1 whitespace-nowrap text-[10px] font-normal text-slate-600 sm:text-xs">
+                    <Check className="h-2.5 w-2.5 shrink-0 text-emerald-600" aria-hidden="true" />
                     <span>{line}</span>
                   </li>
                 ))}
