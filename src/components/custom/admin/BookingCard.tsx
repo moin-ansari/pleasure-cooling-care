@@ -27,40 +27,40 @@ export default function BookingCard({ b, overdue }: { b: AdminBookingListItem; o
     <RowCard href={`/admin/bookings/${b.id}`} tone={alert ? "alert" : undefined}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
-          <span className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${CATEGORY_TONE[b.applianceCategory]}`}>
+          <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${CATEGORY_TONE[b.applianceCategory]}`}>
             <CatIcon className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className={`text-sm font-semibold leading-5 ${alert ? "text-red-700" : "text-blue-800"}`}>
+            <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold leading-5 text-slate-900">
               {friendlyDay(b.date)}, {b.time}
-              {overdue && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Overdue</span>}
+              {overdue && <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-white">Overdue</span>}
             </p>
-            <p className="text-sm font-medium leading-tight text-slate-900">
-              {b.serviceType} <span className="font-normal text-slate-500">· {CATEGORY_LABELS[b.applianceCategory]}</span>
+            <p className="text-sm leading-tight text-slate-700">
+              <span className="font-medium text-slate-900">{b.serviceType}</span> · {CATEGORY_LABELS[b.applianceCategory]}
             </p>
           </div>
         </div>
         <AdminStatusBadge status={b.status} />
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-slate-600">
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
         <span className="inline-flex items-center gap-1">
-          <User className="h-3.5 w-3.5" aria-hidden="true" />
+          <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {b.customerName}
         </span>
         <span className="inline-flex items-center gap-1">
-          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           {b.town}, {b.district}
         </span>
-        {showStore && <span className="rounded bg-slate-100 px-1.5 text-[11px] text-slate-600">{b.storeName}</span>}
+        {showStore && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] leading-normal text-slate-600">{b.storeName}</span>}
       </div>
-      <div className="mt-1 flex items-center justify-between gap-2 text-xs">
-        <span className={b.technicianName ? "text-slate-700" : "font-medium text-amber-700"}>
-          {b.technicianName ? `Technician: ${b.technicianName}` : "No technician yet"}
-          {b.reassignRequested && <span className="ml-1.5 rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-white">Cannot attend</span>}
+      <div className="mt-2 flex items-center justify-between gap-2 border-t pt-2 text-xs text-slate-500">
+        <span className="flex flex-wrap items-center gap-1.5">
+          {b.technicianName ? <span className="text-slate-700">Technician: {b.technicianName}</span> : "No technician yet"}
+          {b.reassignRequested && <span className="rounded bg-red-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none text-white">Cannot attend</span>}
         </span>
-        <span className="flex items-center gap-2 text-slate-500">
-          {b.status === "NEW" && <span className={b.isStale ? "font-semibold text-red-700" : ""}>Waiting {waited(b.createdAt)}</span>}
-          <span className="font-semibold text-slate-800">₹{b.price}</span>
+        <span className="flex shrink-0 items-center gap-2">
+          {b.status === "NEW" && <span className={b.isStale ? "font-medium text-amber-700" : ""}>Waiting {waited(b.createdAt)}</span>}
+          <span className="font-semibold text-slate-900">₹{b.price}</span>
         </span>
       </div>
     </RowCard>

@@ -127,9 +127,11 @@ export function ListSkeleton({ rows = 4 }: { rows?: number }) {
   );
 }
 
-// A row that becomes a card on a phone. Whole card is the tap target.
+// A row that becomes a card on a phone. Whole card is the tap target. "alert" is a single restrained
+// signal (a slim amber edge), not a full-card recolor — the badges inside (Overdue, Cannot attend)
+// already carry the actual urgency in red, so the card itself doesn't need to shout too.
 export function RowCard({ href, onClick, children, tone }: { href?: string; onClick?: () => void; children: React.ReactNode; tone?: "alert" }) {
-  const cls = `flex items-stretch gap-2 rounded-xl border bg-white p-3 shadow-sm ${tone === "alert" ? "border-red-300 bg-red-50" : ""}`;
+  const cls = `flex items-stretch gap-2 rounded-xl border bg-white p-3 shadow-sm ${tone === "alert" ? "border-l-4 border-l-amber-400" : ""}`;
   const chevron = <ChevronRight className="mt-1 h-5 w-5 shrink-0 self-start text-slate-400" aria-hidden="true" />;
   if (href)
     return (
