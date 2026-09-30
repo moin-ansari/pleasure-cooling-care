@@ -54,14 +54,14 @@ export default function CategoryGrid({
 
         <Link href="/track" className="flex aspect-[4/3] flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
           <div className="flex w-full min-h-0 flex-1 items-center justify-center">
-            <ClipboardCheck className="h-9 w-9 text-blue-700" aria-hidden="true" />
+            <ClipboardCheck className="h-6 w-6 text-slate-500 sm:h-7 sm:w-7" aria-hidden="true" />
           </div>
           <p className="line-clamp-2 h-7 w-full shrink-0 text-xs font-bold leading-tight text-blue-900 sm:h-8 sm:text-sm">Track service</p>
         </Link>
 
         <a href={`tel:+91${BUSINESS.phone}`} className="flex aspect-[4/3] flex-col items-center gap-1 rounded-2xl bg-blue-50 p-2 text-center">
           <div className="flex w-full min-h-0 flex-1 items-center justify-center">
-            <PhoneCall className="h-9 w-9 text-blue-700" aria-hidden="true" />
+            <PhoneCall className="h-6 w-6 text-slate-500 sm:h-7 sm:w-7" aria-hidden="true" />
           </div>
           <p className="line-clamp-2 h-7 w-full shrink-0 text-xs font-bold leading-tight text-blue-900 sm:h-8 sm:text-sm">Free consultation call</p>
         </a>
