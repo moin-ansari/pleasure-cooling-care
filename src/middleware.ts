@@ -1,43 +1,43 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { protectedRoute, publicRoute } from './routes';
- 
-// This function can be marked `async` if using `await` inside
+
+// Presence check only, to send visitors to the right login page. Every API route verifies the session itself.
 export function middleware(request: NextRequest) {
 
     const path = request.nextUrl.pathname;
 
-    const isPublicPath = path === "/login" || path === "/signup"
+    const adminToken = request.cookies.get("actechtoken")?.value;
+    const technicianToken = request.cookies.get("techtoken")?.value;
 
-    const token = request.cookies.get("actechtoken")?.value;
-
-    if( path && path === "/admin" && token){
+    if( path === "/admin" && adminToken){
         return NextResponse.redirect(new URL( "/admin/dashboard" , request.url))
     }
 
-    if( path && path === "/"){
+    if( path === "/"){
         return NextResponse.redirect(new URL( "/home" , request.url))
     }
-    
-    if( path && path.startsWith('/admin') && !token){
+
+    if( path.startsWith('/admin') && !adminToken){
         return NextResponse.redirect(new URL( "/login" , request.url))
     }
-    
+
+    if( path.startsWith('/technician') && path !== "/technician/login" && !technicianToken){
+        return NextResponse.redirect(new URL( "/technician/login" , request.url))
+    }
+
     return
 }
- 
-// See "Matching Paths" below to learn more
+
 export const config = {
     matcher: [
       "/",
       "/login",
-      "/signup",
       "/home",
       "/services",
       "/booknow",
       "/admin",
-      "/admin/dashboard",
-      "/admin/bookings",
-      "/admin/bookings/:path*"
+      "/admin/:path*",
+      "/technician",
+      "/technician/:path*"
     ],
   }

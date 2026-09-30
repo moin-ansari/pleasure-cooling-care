@@ -1,8 +1,7 @@
-import { connect } from "@/db/db";
-import User from '@/models/user.model';
 import { NextRequest, NextResponse } from "next/server";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken"
+import { db } from "@/lib/db";
 import { ADMIN_COOKIE } from "@/helpers/getDataFromToken";
 import { clearRateLimit, isRateLimited } from "@/helpers/rateLimit";
 
@@ -14,31 +13,30 @@ export async function POST(request: NextRequest, response: NextResponse) {
 
         const req = await request.json();
 
-        const { email, password } = req;
+        const email = String(req.email ?? "").trim().toLowerCase();
+        const password = String(req.password ?? "");
 
         const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "unknown";
-        const key = `login:${ip}:${String(email).toLowerCase()}`;
+        const key = `login:${ip}:${email}`;
 
-        if (isRateLimited(key, MAX_ATTEMPTS, WINDOW_MS)) {
+        if (await isRateLimited(key, MAX_ATTEMPTS, WINDOW_MS)) {
             return NextResponse.json({ status: "failed", message: "Too many attempts. Try again in 15 minutes." }, { status: 429 })
         }
 
-        connect()
-
-        const existingUser = await User.findOne({ email })
+        const existingUser = await db.adminUser.findUnique({ where: { email } })
 
         const validatePassword = existingUser
             ? await bcryptjs.compare(password, existingUser.password)
             : false;
 
-        if(!existingUser || !validatePassword){
+        if(!existingUser || !validatePassword || !existingUser.isActive){
             return NextResponse.json({ status: "failed", message: "Invalid email or password" })
         }
 
-        clearRateLimit(key);
+        await clearRateLimit(key);
 
         const tokenPayload = {
-            id: existingUser._id,
+            id: existingUser.id,
             email: existingUser.email
         }
 

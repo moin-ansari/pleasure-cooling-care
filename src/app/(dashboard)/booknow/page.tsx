@@ -1,8 +1,5 @@
+import { redirect } from "next/navigation";
 
-const BookNow = () => {
-    return (
-        <div>Book now</div>
-    )
+export default function BookNow() {
+  redirect("/home#services");
 }
-
-export default BookNow;

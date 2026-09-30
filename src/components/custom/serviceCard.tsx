@@ -1,87 +1,162 @@
 "use client";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import React from "react";
+import toast from "react-hot-toast";
 import Link from "next/link";
-import { Separator } from "@/components/ui/separator"
-import Loading from './loading';
-import servicesdata from "../../db/servicesdata.json"
+import { Check, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useCart } from "@/components/custom/CartProvider";
+import { CATEGORY_LABELS } from "@/constants/appliances";
+import { groupServices, strikeoutPrice, type ServiceGroup } from "@/lib/serviceGroups";
+import type { ServiceItem } from "@/types/service";
 
-interface IService {
-  image: string;
-  acType: string;
-  serviceType: string;
-  price: string;
-  desc?: string[];
+const FALLBACK_IMAGE = "/service_half1.jpeg";
+
+// The owner's stated target rating — a fixed marketing number, independent of `reviewCount` (which is
+// the real, live count of published reviews and will keep growing).
+const RATING = 4.5;
+
+// One-line feature tags for the compact card — deliberately separate from the service's own `desc`
+// (which stays full-length for the Details page). Exactly 2 per service, sized to read as a real phrase
+// (not a two-word fragment) while still staying safely under one line at the card's narrowest width; a
+// serviceType with no entry just skips the feature list rather than falling back to the long text and
+// re-introducing the wrapping problem.
+const SHORT_FEATURES: Record<string, string[]> = {
+  "AC Repair": ["Same-day diagnosis", "Parts cost upfront"],
+  "AC Install": ["Free wall drilling", "Leak-proof piping"],
+  "AC Uninstall": ["Safe unit removal", "Area left spotless"],
+  "Anti-rust deep clean AC service": ["Anti-rust spray", "Improves cooling"],
+  "Gas leak fix & refill": ["Leak testing & fix", "Gas refill included"],
+  "Refrigerator Repair": ["Cooling diagnosis", "Parts cost upfront"],
+  "Washing Machine Repair": ["Motor & drum check", "Parts cost upfront"],
+  "Washing Machine Deep Clean": ["Drum deep cleaning", "Exterior wipe-down"],
+  "Geyser Repair": ["Element diagnosis", "Parts cost upfront"],
+};
+
+function addedToast() {
+  toast.success(
+    (t) => (
+      <span className="flex items-center gap-3">
+        Added to cart
+        <Link href="/cart" className="font-semibold text-blue-700 underline" onClick={() => toast.dismiss(t.id)}>
+          View cart
+        </Link>
+      </span>
+    ),
+    { duration: 3000 }
+  );
 }
 
-const ServiceCard = () => {
-  const [data, setData] = useState<IService[]>(servicesdata);
+// A single "Add" button when the group is exactly one service — it adds directly, no picker needed.
+// When the group has more than one subtype (so which one to add is a real choice, e.g. AC Uninstall:
+// Split vs Window are priced differently), "Add" instead opens the Details page, which has the full
+// variant picker — a compact card has no honest way to offer "Split" or "Window" as if they were two
+// separate one-tap products.
+export function AddToCartButton({ group }: { group: ServiceGroup }) {
+  const { addToCart } = useCart();
 
-  if(!data){
-    return <div className="w-full h-60 flex justify-center items-center">
-      <Loading label="Loading..."/>
-    </div>
+  if (group.subTypes.length > 1) {
+    return (
+      <Button asChild variant="default" className="h-7 shrink-0 whitespace-nowrap px-3 text-[10px] sm:h-8 sm:text-xs">
+        <Link href={`/services/${group.serviceIds[0]}`}>Add</Link>
+      </Button>
+    );
   }
 
   return (
-    <div className="w-full">
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 justify-center items-center p-0 w-full md:w-1/2 md:m-auto">
-        {data &&
-          data.map((element: IService, index: any) => (
-            <Card
-              key={index}
-              className="flex sm:col-span-2 md:col-span-1 lg:col-span-1 md:h-full"
-              x-chunk="dashboard-05-chunk-0"
-            >
-              <CardContent className="w-full p-3">
-                <div className="flex justify-between w-full">
-                  <CardHeader className="p-0 pr-3 w-3/5">
-                    <CardTitle className="text-sm tracking-normal">
-                      <span>{element.serviceType} </span>
-                      { element.acType && <span className="text-xs">({element.acType})</span>}
-                      {/* <span>{element.serviceType}</span> */}
-                    </CardTitle>
-                    <div className="leading-relaxed">
-                      <div className="pb-3">
-                        <span className="font-semibold text-sm tracking-normal">Price : </span>
-                        <span className="text-sm text-green-500 font-semibold tracking-normal">₹ {element.price}</span>
-                      </div>
-                      <Separator />
-                      <ul className="list-disc p-3 pr-0 text-[10px] italic">
-                        { element?.desc && element.desc.map((el, index)=>{
-                          return (<li key={index}>{el}</li>)
-                        })}
-                      </ul>
-                    </div>
-                  </CardHeader>
-                  <div className="w-2/5 rounded overflow-hidden flex flex-col h-full">
-                    <Image
-                      width={100}
-                      height={100}
-                      className="w-full rounded"
-                      src={element.image}
-                      alt="prototype"
-                    />
-                    <div className="py-3">
-                      <Button variant={"default"} className="h-8 w-full" asChild>
-                        <Link href="#bookingForm">Book Request</Link>
-                      </Button>
-                    </div>
+    <Button
+      variant="default"
+      className="h-7 shrink-0 whitespace-nowrap px-3 text-[10px] sm:h-8 sm:text-xs"
+      onClick={() => {
+        addToCart(group.serviceIds[0]);
+        addedToast();
+      }}
+    >
+      Add
+    </Button>
+  );
+}
+
+// Photo-forward, 2-across cards: image fills the top; below it, the price sits next to the Add control
+// and never wraps (a tiny "starts from" label sits above it instead, when subtypes are priced
+// differently, so the price/strikeout/Add row is always in the exact same shape and position card to
+// card), exactly 2 one-line feature tags, and a guarantee + "Details" row shares one line at the bottom.
+const ServiceCard = ({ services, reviewCount }: { services: ServiceItem[]; reviewCount: number }) => {
+  const groups = groupServices(services);
+  const showCategory = new Set(groups.map((g) => g.category)).size > 1;
+
+  if (groups.length === 0) {
+    return <div className="flex h-40 w-full items-center justify-center text-muted-foreground">Services will be listed here soon.</div>;
+  }
+
+  return (
+    <div className="mx-auto grid max-w-2xl grid-cols-2 gap-3">
+      {groups.map((element) => {
+        const minPrice = Math.min(...element.prices);
+        // "starts from" whenever the card covers more than one appliance subtype (Split/Window, Double
+        // Door/Single Door, ...) — shown even if those subtypes happen to be priced the same, since the
+        // price could vary by type and the phrasing should stay consistent across every multi-type card.
+        const multi = element.subTypes.length > 1;
+        return (
+          <div key={element.key} className="flex flex-col overflow-hidden rounded-xl border bg-white shadow-sm">
+            <div className="relative aspect-[4/3] w-full bg-slate-100">
+              <Image src={element.image || FALLBACK_IMAGE} alt="" fill sizes="(max-width: 640px) 50vw, 300px" className="object-cover" />
+            </div>
+
+            <div className="flex flex-1 flex-col gap-1 p-2.5">
+              {showCategory && (
+                <span className="text-[9px] font-medium uppercase tracking-wide text-muted-foreground sm:text-[10px]">{CATEGORY_LABELS[element.category]}</span>
+              )}
+              <p className="text-xs font-semibold leading-tight text-slate-900 sm:text-sm">
+                {element.serviceType} <span className="font-normal text-muted-foreground">({element.subTypes.join(" / ")})</span>
+              </p>
+
+              <div className="mt-0.5 flex items-center justify-between gap-2">
+                <div>
+                  <p className={`text-[9px] leading-tight text-slate-400 sm:text-[10px] ${multi ? "" : "invisible"}`}>starts from</p>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="whitespace-nowrap text-sm font-bold text-slate-900 sm:text-base">₹{minPrice}</span>
+                    <span className="whitespace-nowrap text-[10px] font-normal text-muted-foreground line-through sm:text-xs">₹{strikeoutPrice(element.prices)}</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-      </div>
+                <AddToCartButton group={element} />
+              </div>
+
+              {reviewCount > 0 && (
+                <div className="mt-0.5 flex items-center gap-1">
+                  <Star className="h-3 w-3 shrink-0 fill-amber-400 text-amber-400" aria-hidden="true" />
+                  <span className="text-[10px] font-semibold text-slate-700 sm:text-xs">{RATING}</span>
+                  <span className="text-[10px] font-normal text-muted-foreground sm:text-xs">
+                    ({reviewCount} {reviewCount === 1 ? "review" : "reviews"})
+                  </span>
+                </div>
+              )}
+
+              {SHORT_FEATURES[element.serviceType] && (
+                <ul className="mt-0.5 grid gap-0.5">
+                  {SHORT_FEATURES[element.serviceType].map((line) => (
+                    <li key={line} className="flex items-center gap-1 whitespace-nowrap text-[10px] font-normal text-slate-600 sm:text-xs">
+                      <Check className="h-2.5 w-2.5 shrink-0 text-emerald-600" aria-hidden="true" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                {element.warrantyDays > 0 ? (
+                  <span className="whitespace-nowrap text-[10px] font-medium text-emerald-600 sm:text-xs">{element.warrantyDays}-day guarantee</span>
+                ) : (
+                  <span />
+                )}
+                <Link href={`/services/${element.serviceIds[0]}`} className="whitespace-nowrap text-[10px] font-semibold text-blue-700 hover:underline sm:text-xs">
+                  Details <span aria-hidden="true">&rarr;</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };

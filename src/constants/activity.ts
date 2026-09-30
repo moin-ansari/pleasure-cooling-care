@@ -1,0 +1,68 @@
+// Readable names for the actions written to the activity log, and the groups used to filter it.
+export const ACTIVITY_GROUPS = [
+    { key: "all", label: "Everything", prefixes: [] as string[] },
+    { key: "bookings", label: "Bookings", prefixes: ["booking.", "warranty."] },
+    { key: "money", label: "Money", prefixes: ["ledger.", "storeLedger.", "expense."] },
+    { key: "team", label: "Team", prefixes: ["technician.", "coAdmin."] },
+    { key: "stores", label: "Stores and cities", prefixes: ["store.", "serviceArea."] },
+    { key: "catalog", label: "Services", prefixes: ["service."] },
+    { key: "customers", label: "Customers", prefixes: ["customer.", "review.", "notification."] },
+    { key: "settings", label: "Settings", prefixes: ["settings."] },
+] as const;
+
+export type ActivityGroupKey = (typeof ACTIVITY_GROUPS)[number]["key"];
+
+const LABELS: Record<string, string> = {
+    "booking.assign": "Assigned a booking",
+    "booking.reassign": "Reassigned a booking",
+    "booking.arrivalChange": "Changed a visit time",
+    "booking.cancel": "Cancelled a booking",
+    "booking.priceChange": "Changed a booking's price",
+    "booking.correctAmounts": "Corrected the amounts on a completed job",
+    "booking.createByAdmin": "Created a booking by phone",
+    "warranty.approve": "Approved a guarantee claim",
+    "warranty.reject": "Declined a guarantee claim",
+    "ledger.office_payment": "Recorded a technician's payment",
+    "ledger.payout": "Recorded a deduction from a payout",
+    "ledger.adjustment": "Adjusted a technician's balance",
+    "storeLedger.payment": "Recorded a store's payment to the owner",
+    "storeLedger.adjustment": "Adjusted a store's balance",
+    "expense.create": "Added an expense",
+    "expense.update": "Changed an expense",
+    "expense.delete": "Deleted an expense",
+    "technician.create": "Added a technician",
+    "technician.update": "Changed a technician",
+    "technician.delete": "Deleted a technician",
+    "technician.pinReset": "Reset a technician's PIN",
+    "technician.unlock": "Unlocked a technician",
+    "coAdmin.create": "Added a co-admin",
+    "coAdmin.update": "Changed a co-admin",
+    "coAdmin.resetPassword": "Reset a co-admin's password",
+    "store.create": "Created a store",
+    "store.update": "Changed a store's terms",
+    "store.alertPhone": "Changed a store's alert number",
+    "store.assignCity": "Moved a city to another store",
+    "serviceArea.create": "Added a city",
+    "serviceArea.update": "Changed a city",
+    "serviceArea.delete": "Deleted a city",
+    "service.create": "Added a service",
+    "service.update": "Changed a service",
+    "service.delete": "Deleted a service",
+    "service.bulk.show": "Showed several services",
+    "service.bulk.hide": "Hid several services",
+    "service.bulk.setPrice": "Set the price of several services",
+    "service.bulk.changePercent": "Changed prices by a percentage",
+    "service.bulk.changeAmount": "Changed prices by an amount",
+    "customer.block": "Blocked a customer's number",
+    "customer.unblock": "Unblocked a customer's number",
+    "review.hide": "Hid a review",
+    "review.show": "Showed a review",
+    "notification.resend": "Resent a message",
+    "settings.cancelCutoff": "Changed the cancellation rule",
+    "settings.ranks": "Changed the rank rules",
+    "settings.adminAlertPhone": "Changed the alert number",
+};
+
+export function describeAction(action: string): string {
+    return LABELS[action] ?? action.replace(/[._]/g, " ");
+}

@@ -1,0 +1,458 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ApplianceCategory {
+  AC
+  REFRIGERATOR
+  WASHING_MACHINE
+  GEYSER
+}
+
+enum BookingStatus {
+  NEW
+  CONFIRMED
+  ARRIVING
+  WORKING
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+enum BookingSource {
+  WEB
+  CHATBOT
+  VOICE
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum Rank {
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+}
+
+enum LedgerType {
+  COMMISSION_OWED
+  OFFICE_PAYMENT
+  PAYOUT
+  ADJUSTMENT
+}
+
+enum ExpenseType {
+  EXPENSE
+  AD_SPEND
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationStatus {
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AdminRole {
+  OWNER
+  CO_ADMIN
+}
+
+enum StoreLedgerType {
+  OWNER_SHARE_OWED
+  STORE_PAYMENT
+  ADJUSTMENT
+}
+
+model AdminUser {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  password  String
+  isAdmin   Boolean   @default(false)
+  // OWNER sees every store. CO_ADMIN sees only the store they belong to.
+  role      AdminRole @default(OWNER)
+  storeId   String?
+  store     Store?    @relation(fields: [storeId], references: [id])
+  name      String    @default("")
+  phone     String?
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+
+  @@map("admin_users")
+}
+
+// A store is a group of cities run by the owner or by co-admins. Money terms and balances are per store.
+model Store {
+  id       String  @id @default(cuid())
+  name     String  @unique
+  // The owner's own store. Technicians pay the owner directly, so there is no store-to-owner balance.
+  isMain   Boolean @default(false)
+  isActive Boolean @default(true)
+
+  // What a technician pays the store per job: a percentage of the service charge plus a flat amount.
+  technicianRatePercent Decimal @default(20) @db.Decimal(5, 2)
+  // How much of that percentage goes to the owner. The flat amount always goes to the owner.
+  ownerRatePercent      Decimal @default(10) @db.Decimal(5, 2)
+  flatAmount            Decimal @default(0) @db.Decimal(10, 2)
+  adminAlertPhone       String?
+
+  areas         ServiceArea[]
+  admins        AdminUser[]
+  technicians   Technician[]
+  bookings      Booking[]
+  ledgerEntries LedgerEntry[]
+  storeLedger   StoreLedgerEntry[]
+  expenses      Expense[]
+  createdAt     DateTime           @default(now())
+
+  @@map("stores")
+}
+
+// What a store owes the owner: the owner's share of each completed job, less payments made.
+model StoreLedgerEntry {
+  id        String          @id @default(cuid())
+  storeId   String
+  store     Store           @relation(fields: [storeId], references: [id])
+  bookingId String?
+  type      StoreLedgerType
+  amount    Decimal         @db.Decimal(10, 2)
+  note      String?
+  createdAt DateTime        @default(now())
+
+  @@index([storeId])
+  @@map("store_ledger_entries")
+}
+
+model ServiceArea {
+  id          String       @id @default(cuid())
+  state       String
+  district    String
+  isActive    Boolean      @default(true)
+  storeId     String
+  store       Store        @relation(fields: [storeId], references: [id])
+  technicians Technician[]
+  bookings    Booking[]
+
+  @@unique([state, district])
+  @@map("service_areas")
+}
+
+model Service {
+  id                   String            @id @default(cuid())
+  applianceCategory    ApplianceCategory
+  applianceSubType     String
+  serviceType          String
+  price                Int
+  image                String?
+  desc                 String[]
+  warrantyDurationDays Int               @default(0)
+  isActive             Boolean           @default(true)
+  bookings             Booking[]
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  @@unique([applianceCategory, applianceSubType, serviceType])
+  @@map("services")
+}
+
+model Technician {
+  id                 String                     @id @default(cuid())
+  name               String
+  fatherName         String?
+  photo              String?
+  phone              String
+  workEmail          String                     @unique
+  pinHash            String
+  failedPinAttempts  Int                        @default(0)
+  lockedUntil        DateTime?
+  address            String?
+  age                Int?
+  gender             Gender?
+  experienceYears    Int?
+  specializations    ApplianceCategory[]
+  serviceAreas       ServiceArea[]
+  accountHolderName  String?
+  accountNumber      String?
+  ifsc               String?
+  idType             String?
+  idNumber           String?
+  idImageUrl         String?
+  rank               Rank                       @default(BRONZE)
+  jobsCompletedCount Int                        @default(0)
+  averageRating      Float                      @default(0)
+  ratingCount        Int                        @default(0)
+  isActive           Boolean                    @default(true)
+  // Admin opt-in, off by default: whether this technician's name/photo/rating appear on the public website.
+  showOnWebsite      Boolean                    @default(false)
+  storeId            String
+  store              Store                      @relation(fields: [storeId], references: [id])
+  bookings           Booking[]
+  reviews            Review[]
+  ledgerEntries      LedgerEntry[]
+  expenses           Expense[]
+  unavailability     TechnicianUnavailability[]
+  joinedAt           DateTime                   @default(now())
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  @@map("technicians")
+}
+
+model Booking {
+  id             String        @id @default(cuid())
+  bookingRef     String        @unique
+  source         BookingSource @default(WEB)
+  status         BookingStatus @default(NEW)
+  idempotencyKey String?       @unique
+
+  customerName  String
+  mobile        String
+  streetAddress String
+  town          String
+  pincode       String
+  serviceAreaId String
+  serviceArea   ServiceArea @relation(fields: [serviceAreaId], references: [id])
+  lat           Float?
+  lng           Float?
+
+  date               DateTime
+  time               String
+  confirmedArrivalAt DateTime?
+  etaAt              DateTime?
+
+  serviceId         String?
+  service           Service?          @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  applianceCategory ApplianceCategory
+  applianceSubType  String
+  serviceType       String
+
+  price                 Int
+  laborAmount           Int      @default(0)
+  partsAmount           Int      @default(0)
+  amountCollected       Int?
+  // The commission terms in force when the job was completed, kept so later corrections use the same terms.
+  commissionRateApplied Decimal? @db.Decimal(5, 2)
+  commissionFlatApplied Decimal? @db.Decimal(10, 2)
+  ownerRateApplied      Decimal? @db.Decimal(5, 2)
+
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  // The store that earns from this job. Fixed when the booking is made, or when another store's technician takes it.
+  storeId      String
+  store        Store       @relation(fields: [storeId], references: [id])
+
+  // Set when the technician says they cannot attend. The office sees it until the job is reassigned.
+  reassignRequestedAt DateTime?
+  reassignReason      String?
+
+  warrantyClaimOfId String?
+  warrantyClaimOf   Booking?  @relation("WarrantyRedo", fields: [warrantyClaimOfId], references: [id], onDelete: SetNull)
+  warrantyRedos     Booking[] @relation("WarrantyRedo")
+  warrantyExpiresAt DateTime?
+  cancelReason      String?
+  technicianNotes   String?
+  completedAt       DateTime?
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  clickId     String?
+
+  review           Review?
+  statusHistory    BookingStatusHistory[]
+  ledgerEntries    LedgerEntry[]
+  expenses         Expense[]
+  claimsAgainst    WarrantyClaim[]        @relation("ClaimOriginal")
+  createdFromClaim WarrantyClaim?         @relation("ClaimCreated")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mobile])
+  @@index([status])
+  @@index([storeId])
+  @@index([technicianId])
+  @@index([createdAt])
+  @@map("bookings")
+}
+
+model BookingStatusHistory {
+  id            String         @id @default(cuid())
+  bookingId     String
+  booking       Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fromStatus    BookingStatus?
+  toStatus      BookingStatus
+  changedByType String
+  changedById   String?
+  note          String?
+  createdAt     DateTime       @default(now())
+
+  @@index([bookingId])
+  @@map("booking_status_history")
+}
+
+model Review {
+  id           String     @id @default(cuid())
+  bookingId    String     @unique
+  booking      Booking    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  customerName String
+  rating       Int
+  comment      String?
+  isPublic     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  @@index([technicianId])
+  @@map("reviews")
+}
+
+model WarrantyClaim {
+  id                String      @id @default(cuid())
+  originalBookingId String
+  originalBooking   Booking     @relation("ClaimOriginal", fields: [originalBookingId], references: [id], onDelete: Cascade)
+  issueDescription  String
+  status            ClaimStatus @default(PENDING)
+  resolvedById      String?
+  resolvedAt        DateTime?
+  // Why it was turned down, shown to the customer.
+  rejectReason      String?
+  createdBookingId  String?     @unique
+  createdBooking    Booking?    @relation("ClaimCreated", fields: [createdBookingId], references: [id], onDelete: SetNull)
+  createdAt         DateTime    @default(now())
+
+  @@index([originalBookingId])
+  @@map("warranty_claims")
+}
+
+model LedgerEntry {
+  id           String     @id @default(cuid())
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id])
+  bookingId    String?
+  booking      Booking?   @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  storeId      String
+  store        Store      @relation(fields: [storeId], references: [id])
+  type         LedgerType
+  amount       Decimal    @db.Decimal(10, 2)
+  note         String?
+  createdAt    DateTime   @default(now())
+
+  @@index([technicianId])
+  @@index([storeId])
+  @@map("ledger_entries")
+}
+
+model Expense {
+  id           String      @id @default(cuid())
+  category     String
+  amount       Decimal     @db.Decimal(10, 2)
+  date         DateTime
+  note         String?
+  type         ExpenseType @default(EXPENSE)
+  technicianId String?
+  technician   Technician? @relation(fields: [technicianId], references: [id], onDelete: SetNull)
+  bookingId    String?
+  booking      Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  // Empty means a business-wide cost that only the owner sees.
+  storeId      String?
+  store        Store?      @relation(fields: [storeId], references: [id])
+  createdAt    DateTime    @default(now())
+
+  @@map("expenses")
+}
+
+model TechnicianUnavailability {
+  id           String     @id @default(cuid())
+  technicianId String
+  technician   Technician @relation(fields: [technicianId], references: [id], onDelete: Cascade)
+  date         DateTime   @db.Date
+
+  @@unique([technicianId, date])
+  @@map("technician_unavailability")
+}
+
+model BlockedPhone {
+  id        String   @id @default(cuid())
+  mobile    String   @unique
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@map("blocked_phones")
+}
+
+model NotificationLog {
+  id               String             @id @default(cuid())
+  bookingId        String?
+  storeId          String?
+  channel          String
+  to               String
+  template         String
+  status           NotificationStatus
+  providerResponse String?
+  body             String?
+  vars             Json?
+  attempts         Int                @default(1)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @default(now()) @updatedAt
+
+  @@index([status])
+  @@index([storeId])
+  @@index([createdAt])
+  @@index([to, createdAt])
+  @@map("notification_logs")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorType String
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+// Backs the rate limiter. One row per limited key (an IP, a phone number, ...); count resets once resetAt
+// has passed. In Postgres rather than in memory so every serverless instance shares the same counters.
+model RateLimitBucket {
+  key     String   @id
+  count   Int
+  resetAt DateTime
+
+  @@map("rate_limit_buckets")
+}
+
+model Settings {
+  id                Int           @id @default(1)
+  silverMinJobs     Int           @default(25)
+  silverMinRating   Float         @default(4.0)
+  goldMinJobs       Int           @default(75)
+  goldMinRating     Float         @default(4.4)
+  diamondMinJobs    Int           @default(150)
+  diamondMinRating  Float         @default(4.7)
+  cancelBlockedFrom BookingStatus @default(ARRIVING)
+
+  @@map("settings")
+}

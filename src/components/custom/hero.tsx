@@ -1,73 +1,83 @@
-import { MoveRight } from 'lucide-react';
-import React from 'react';
-import { Button } from "@/components/ui/button";
+"use client";
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { RiToolsFill } from "react-icons/ri";
-import { LuSprayCan } from "react-icons/lu";
-import { MdOutlineGasMeter } from "react-icons/md";
-import { GiComputerFan } from "react-icons/gi";4
+import StorefrontTopBar from "@/components/custom/StorefrontTopBar";
+import type { ApplianceCategoryValue } from "@/constants/appliances";
+import type { ServiceAreaItem } from "@/lib/domain/serviceAreas";
 
-const SNOWFLAKE_COUNT = 55;
-const snowflakes = Array.from({ length: SNOWFLAKE_COUNT }, (_, i) => {
-  const left = (i * 137.5) % 100; // golden-angle spread = even, non-repeating coverage
-  const size = 4 + ((i * 7) % 9); // 4-12px
-  const duration = 7 + ((i * 5) % 9); // 7-15s, falling
-  const delay = -((i * 1.7) % duration); // negative delay staggers flakes mid-fall on load
-  const swayDuration = 2.5 + ((i * 3) % 3); // 2.5-5.5s, side-to-side
-  const opacity = 0.55 + (((i * 11) % 45) / 100); // 0.55-1
-  return { left, size, duration, delay, swayDuration, opacity };
-});
+interface Slide {
+  category: ApplianceCategoryValue;
+  image: string;
+  headline: string;
+  subtext: string;
+}
 
-const HeroSection = () => {
+// The photos are all exactly 2000x750 (8:3) — locking the banner to that same ratio means the whole photo
+// always shows, full width, with the height following naturally from it (never cropped, never a fixed box).
+const IMAGE_RATIO = "aspect-[8/3]";
+
+const SLIDES: Slide[] = [
+  { category: "GEYSER", image: "/images/hero/geyser.webp", headline: "Hot water, right on time", subtext: "Geyser repair & installation." },
+  { category: "WASHING_MACHINE", image: "/images/hero/washing-machine.webp", headline: "Laundry day, sorted", subtext: "Washing machine repair & installation." },
+  { category: "REFRIGERATOR", image: "/images/hero/refrigerator.webp", headline: "Keep it fresh, always", subtext: "Refrigerator repair & installation." },
+  { category: "AC", image: "/images/hero/ac.webp", headline: "Beat the heat, stay cool", subtext: "AC repair, service & installation." },
+];
+
+const SLIDE_MS = 5000;
+
+// Full-bleed hero: a slowly-rotating carousel of the owner's own appliance photos at their real aspect
+// ratio (nothing cropped), no scrim over the image — the photos already leave light, empty copy-space —
+// so text sits directly on the photo in blue, matching the brand rather than a white-on-dark overlay.
+const HeroSection = ({ areas = [] }: { areas?: ServiceAreaItem[] }) => {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setActive((i) => (i + 1) % SLIDES.length), SLIDE_MS);
+    return () => clearInterval(id);
+  }, []);
+
   return (
-    <div className="relative overflow-hidden bg-gradient-to-b from-sky-400 via-sky-600 to-blue-800">
-      <div className="snowfall-layer" aria-hidden="true">
-        {snowflakes.map((flake, i) => (
-          <span
-            key={i}
-            className="snowflake"
-            style={{
-              left: `${flake.left}%`,
-              width: `${flake.size}px`,
-              height: `${flake.size}px`,
-              opacity: flake.opacity,
-              "--fall-duration": `${flake.duration}s`,
-              "--fall-delay": `${flake.delay}s`,
-              "--sway-duration": `${flake.swayDuration}s`,
-            } as React.CSSProperties}
-          />
-        ))}
-      </div>
-      <div className="relative z-10 py-5 px-3 text-center md:w-1/2 md:m-auto">
-        <h1 className="text-4xl text-white font-bold mt-8 mb-8">Do you need a AC Service ?</h1>
-        <div className="text-1xl text-white font-medium"><span className="text-2xl">&#x275D;</span> We have 5 years of proven expertise in Air Conditioner solutions. Trust us for top-tier service that keeps you cool <span className="text-2xl">&#x275E;</span></div>
-        <Button variant={"link"} className="w-1/2 text-white mb-6" asChild>
-            <Link href="#experience" className="text-yellow-300 italic underline underline-offset-8">Click to Read Experience</Link>
-          </Button>
-        <h4 className="text-1xl text-white font-medium">Providing all services at your doorstep</h4>
-          <div className="flex items-center justify-between text-1xl text-white font-medium pt-6 pb-4 gap-2">
-              <div className="flex flex-col items-center">
-                  <RiToolsFill className="h-6 w-6 text-yellow-300"/>
-                  <div className='tracking-wide'>AC Repair</div>
-              </div>
-              <div className="flex flex-col items-center">
-                  <LuSprayCan className="h-6 w-6 text-yellow-300"/>
-                  <div className='tracking-wide'>Anti-rust Deep Clean</div>
-              </div>
-              <div className="flex flex-col items-center">
-                  <MdOutlineGasMeter className="h-6 w-6 text-yellow-300"/>
-                  <div className='tracking-wide'>Gas leak fix {'&'} Refill</div>
-              </div>
-              <div className="flex flex-col items-center">
-                  <GiComputerFan className="h-6 w-6 text-yellow-300"/>
-                  <div className='tracking-wide'>Install {'&'} Uninstall</div>
-              </div>
+    <div className={`relative w-full ${IMAGE_RATIO} overflow-hidden`}>
+      {SLIDES.map((slide, i) => (
+        <Image
+          key={slide.category}
+          src={slide.image}
+          alt=""
+          fill
+          priority={i === 0}
+          sizes="100vw"
+          className={`object-cover transition-opacity duration-[1500ms] ease-in-out ${i === active ? "opacity-100" : "opacity-0"}`}
+        />
+      ))}
+
+      <div className="absolute inset-0 flex flex-col justify-between px-2 py-1.5 sm:px-4 sm:py-3">
+        <StorefrontTopBar areas={areas} compact tone="dark" />
+
+        <div>
+          {SLIDES.map((slide, i) => (
+            <div key={slide.category} className={i === active ? "block" : "hidden"}>
+              <h1 className="text-sm font-bold leading-tight text-blue-900 sm:text-2xl">{slide.headline}</h1>
+              <p className="text-[11px] leading-tight text-blue-800 sm:mt-1 sm:text-base">{slide.subtext}</p>
+            </div>
+          ))}
+          <Link href="#services" className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-blue-900 underline-offset-4 hover:underline sm:mt-2 sm:text-sm">
+            Book now <span aria-hidden="true">&rarr;</span>
+          </Link>
+
+          <div className="mt-1 flex gap-1 sm:mt-2" role="tablist" aria-label="Hero slides">
+            {SLIDES.map((slide, i) => (
+              <button
+                key={slide.category}
+                type="button"
+                role="tab"
+                aria-selected={i === active}
+                aria-label={`Show ${slide.category.toLowerCase().replace("_", " ")} slide`}
+                onClick={() => setActive(i)}
+                className={`h-1 rounded-full transition-all ${i === active ? "w-4 bg-blue-900" : "w-1 bg-blue-900/40"}`}
+              />
+            ))}
           </div>
-        <div className="flex mt-4 gap-4 justify-between">
-          <Button variant={"secondary"} className="w-1/2"><Link href="#contact">Contact Me</Link></Button>
-          <Button variant={"default"} className="w-1/2" asChild>
-            <Link href="#bookingForm">Book a Service Now</Link>
-          </Button>
         </div>
       </div>
     </div>
